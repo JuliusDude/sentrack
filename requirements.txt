@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+vaderSentiment
+pandas
+transformers
+torch

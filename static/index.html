@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SenTrack — Sentiment Oracle</title>
+    <meta
+      name="description"
+      content="SenTrack — Real-time crypto market sentiment oracle. Community Vibe Score powered by NLP analysis."
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg-primary: #0a0e17;
+        --bg-card: rgba(15, 23, 42, 0.7);
+        --bg-card-hover: rgba(20, 30, 55, 0.8);
+        --border: rgba(100, 120, 180, 0.15);
+        --text-primary: #e2e8f0;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --accent-bullish: #22c55e;
+        --accent-bullish-glow: rgba(34, 197, 94, 0.3);
+        --accent-bearish: #ef4444;
+        --accent-bearish-glow: rgba(239, 68, 68, 0.3);
+        --accent-neutral: #f59e0b;
+        --accent-neutral-glow: rgba(245, 158, 11, 0.3);
+        --accent-blue: #3b82f6;
+        --gradient-bullish: linear-gradient(135deg, #22c55e, #10b981);
+        --gradient-bearish: linear-gradient(135deg, #ef4444, #dc2626);
+        --gradient-neutral: linear-gradient(135deg, #f59e0b, #d97706);
+      }
+
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* Animated background */
+      body::before {
+        content: "";
+        position: fixed;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background:
+          radial-gradient(
+            ellipse at 20% 50%,
+            rgba(59, 130, 246, 0.06) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            ellipse at 80% 20%,
+            rgba(139, 92, 246, 0.05) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            ellipse at 50% 80%,
+            rgba(34, 197, 94, 0.04) 0%,
+            transparent 50%
+          );
+        animation: bgShift 20s ease-in-out infinite alternate;
+        z-index: -1;
+      }
+
+      @keyframes bgShift {
+        0% {
+          transform: translate(0, 0) rotate(0deg);
+        }
+        100% {
+          transform: translate(-3%, -3%) rotate(2deg);
+        }
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      /* Header */
+      header {
+        text-align: center;
+        padding: 40px 0 32px;
+      }
+
+      header h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #e2e8f0, #3b82f6, #8b5cf6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -0.02em;
+      }
+
+      header p {
+        color: var(--text-secondary);
+        margin-top: 8px;
+        font-size: 0.95rem;
+        font-weight: 300;
+      }
+
+      .engine-badge {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 4px 14px;
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.25);
+        border-radius: 20px;
+        font-size: 0.75rem;
+        color: var(--accent-blue);
+        font-weight: 500;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      /* Cards */
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 28px;
+        backdrop-filter: blur(20px);
+        transition: all 0.3s ease;
+      }
+
+      .card:hover {
+        background: var(--bg-card-hover);
+        border-color: rgba(100, 120, 180, 0.25);
+      }
+
+      .card-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 16px;
+      }
+
+      /* Grid layout */
+      .grid-top {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .grid-bottom {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+      }
+
+      /* Vibe Score Display */
+      .score-card {
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .score-card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 16px;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+        pointer-events: none;
+      }
+
+      .score-card.bullish::after {
+        background: radial-gradient(
+          ellipse at center,
+          var(--accent-bullish-glow),
+          transparent 70%
+        );
+        opacity: 0.2;
+      }
+      .score-card.bearish::after {
+        background: radial-gradient(
+          ellipse at center,
+          var(--accent-bearish-glow),
+          transparent 70%
+        );
+        opacity: 0.2;
+      }
+      .score-card.neutral::after {
+        background: radial-gradient(
+          ellipse at center,
+          var(--accent-neutral-glow),
+          transparent 70%
+        );
+        opacity: 0.2;
+      }
+
+      .score-value {
+        font-size: 4.5rem;
+        font-weight: 900;
+        line-height: 1;
+        margin: 16px 0 8px;
+        transition: color 0.5s ease;
+        position: relative;
+        z-index: 1;
+      }
+
+      .score-value.bullish {
+        color: var(--accent-bullish);
+      }
+      .score-value.bearish {
+        color: var(--accent-bearish);
+      }
+      .score-value.neutral {
+        color: var(--accent-neutral);
+      }
+
+      .score-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        position: relative;
+        z-index: 1;
+      }
+
+      /* Classification badge */
+      .classification-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .classification-badge {
+        padding: 10px 28px;
+        border-radius: 12px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #fff;
+        transition: all 0.5s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .classification-badge::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 12px;
+        animation: shimmer 3s ease-in-out infinite;
+        opacity: 0.15;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.4),
+          transparent
+        );
+        background-size: 200% 100%;
+      }
+
+      @keyframes shimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+
+      .classification-badge.bullish {
+        background: var(--gradient-bullish);
+      }
+      .classification-badge.bearish {
+        background: var(--gradient-bearish);
+      }
+      .classification-badge.neutral {
+        background: var(--gradient-neutral);
+      }
+
+      .classification-sub {
+        margin-top: 12px;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+
+      /* Stats card */
+      .stats-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 14px;
+      }
+
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .stat-label {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+      }
+
+      .stat-value {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      /* Score bar */
+      .score-bar-container {
+        margin-top: 8px;
+      }
+
+      .score-bar-track {
+        width: 100%;
+        height: 6px;
+        background: rgba(100, 120, 180, 0.1);
+        border-radius: 3px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .score-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition:
+          width 1s ease,
+          background 0.5s ease;
+      }
+
+      .score-bar-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 4px;
+      }
+
+      .score-bar-labels span {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+      }
+
+      /* Chart */
+      .chart-container {
+        position: relative;
+        height: 300px;
+      }
+
+      /* Activity feed */
+      .activity-feed {
+        max-height: 300px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(100, 120, 180, 0.2) transparent;
+      }
+
+      .activity-item {
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .activity-item:last-child {
+        border-bottom: none;
+      }
+
+      .activity-score {
+        font-weight: 700;
+        font-size: 1rem;
+      }
+
+      .activity-meta {
+        text-align: right;
+      }
+
+      .activity-class {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .activity-time {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+
+      /* Actions */
+      .actions {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 24px;
+        padding-bottom: 40px;
+      }
+
+      .btn {
+        padding: 10px 24px;
+        border: none;
+        border-radius: 10px;
+        font-family: "Inter", sans-serif;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: #fff;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+      }
+
+      .btn-primary:active {
+        transform: translateY(0);
+      }
+
+      .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .btn-ghost {
+        background: rgba(100, 120, 180, 0.08);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+      }
+
+      .btn-ghost:hover {
+        background: rgba(100, 120, 180, 0.15);
+        color: var(--text-primary);
+      }
+
+      /* Pulse animation for live indicator */
+      .live-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: var(--accent-bullish);
+        border-radius: 50%;
+        margin-right: 6px;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.5;
+          transform: scale(0.85);
+        }
+      }
+
+      /* Loading state */
+      .loading {
+        text-align: center;
+        padding: 60px;
+        color: var(--text-muted);
+      }
+
+      .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid var(--border);
+        border-top-color: var(--accent-blue);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .grid-top {
+          grid-template-columns: 1fr;
+        }
+        .grid-bottom {
+          grid-template-columns: 1fr;
+        }
+        .score-value {
+          font-size: 3.5rem;
+        }
+        header h1 {
+          font-size: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>SenTrack</h1>
+        <p>Tokenized Sentiment Oracle for Decentralized Markets</p>
+        <span class="engine-badge" id="engineBadge">Loading...</span>
+      </header>
+
+      <div id="app">
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Initializing sentiment engine...</p>
+        </div>
+      </div>
+
+      <div id="dashboard" style="display: none">
+        <!-- Top row: Score | Classification | Stats -->
+        <div class="grid-top">
+          <div class="card score-card" id="scoreCard">
+            <div class="card-title">
+              <span class="live-dot"></span>Community Vibe Score
+            </div>
+            <div class="score-value" id="scoreValue">—</div>
+            <div class="score-label">out of 100</div>
+            <div class="score-bar-container">
+              <div class="score-bar-track">
+                <div class="score-bar-fill" id="scoreBar"></div>
+              </div>
+              <div class="score-bar-labels">
+                <span>0 · Bearish</span>
+                <span>50 · Neutral</span>
+                <span>100 · Bullish</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card classification-card">
+            <div class="card-title">Market Classification</div>
+            <div class="classification-badge" id="classBadge">—</div>
+            <div class="classification-sub" id="classSub"></div>
+          </div>
+
+          <div class="card stats-card">
+            <div class="card-title">Analysis Details</div>
+            <div class="stat-row">
+              <span class="stat-label">Raw Score</span>
+              <span class="stat-value" id="rawScore">—</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Sample Size</span>
+              <span class="stat-value" id="sampleSize">—</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Last Updated</span>
+              <span class="stat-value" id="lastUpdated">—</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Total Runs</span>
+              <span class="stat-value" id="totalRuns">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom row: Chart | Activity Feed -->
+        <div class="grid-bottom">
+          <div class="card">
+            <div class="card-title">Sentiment Trend</div>
+            <div class="chart-container">
+              <canvas id="trendChart"></canvas>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Score History</div>
+            <div class="activity-feed" id="activityFeed">
+              <p style="color: var(--text-muted); font-size: 0.85rem">
+                No history yet.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button
+            class="btn btn-primary"
+            id="analyzeBtn"
+            onclick="runAnalysis()"
+          >
+            ⚡ Run New Analysis
+          </button>
+          <button class="btn btn-ghost" onclick="refreshData()">
+            ↻ Refresh Dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let trendChart = null;
+
+      // Color helpers
+      function getColor(classification) {
+        const c = classification?.toLowerCase();
+        if (c === "bullish")
+          return { main: "#22c55e", glow: "rgba(34,197,94,0.3)" };
+        if (c === "bearish")
+          return { main: "#ef4444", glow: "rgba(239,68,68,0.3)" };
+        return { main: "#f59e0b", glow: "rgba(245,158,11,0.3)" };
+      }
+
+      function getCssClass(classification) {
+        return (classification || "neutral").toLowerCase();
+      }
+
+      function formatTime(iso) {
+        const d = new Date(iso);
+        return d.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      }
+
+      // Fetch latest score
+      async function fetchScore() {
+        const res = await fetch("/api/score");
+        if (!res.ok) return null;
+        return res.json();
+      }
+
+      // Fetch history
+      async function fetchHistory() {
+        const res = await fetch("/api/history");
+        if (!res.ok) return { history: [] };
+        return res.json();
+      }
+
+      // Update the score display
+      function updateScoreDisplay(data) {
+        const cls = getCssClass(data.classification);
+        const colors = getColor(data.classification);
+
+        // Score value
+        document.getElementById("scoreValue").textContent =
+          data.score.toFixed(1);
+        document.getElementById("scoreValue").className = "score-value " + cls;
+
+        // Score card glow
+        document.getElementById("scoreCard").className =
+          "card score-card " + cls;
+
+        // Score bar
+        const bar = document.getElementById("scoreBar");
+        bar.style.width = data.score + "%";
+        bar.style.background = `linear-gradient(90deg, ${colors.main}, ${colors.glow.replace("0.3", "0.8")})`;
+
+        // Classification badge
+        const badge = document.getElementById("classBadge");
+        badge.textContent = data.classification;
+        badge.className = "classification-badge " + cls;
+        document.getElementById("classSub").textContent =
+          data.classification === "Bullish"
+            ? "Positive market sentiment"
+            : data.classification === "Bearish"
+              ? "Negative market sentiment"
+              : "Sideways market sentiment";
+
+        // Stats
+        document.getElementById("rawScore").textContent = data.raw_score;
+        document.getElementById("sampleSize").textContent =
+          data.sample_size + " tweets";
+        document.getElementById("lastUpdated").textContent = formatTime(
+          data.timestamp,
+        );
+
+        // Engine badge
+        document.getElementById("engineBadge").textContent =
+          "🧠 " + data.nlp_engine.toUpperCase() + " Engine";
+      }
+
+      // Update the chart
+      function updateChart(history) {
+        const labels = history.map((h, i) => "Run " + (i + 1));
+        const scores = history.map((h) => h.score);
+        const rawScores = history.map((h) => h.raw_score);
+
+        const ctx = document.getElementById("trendChart").getContext("2d");
+
+        if (trendChart) {
+          trendChart.data.labels = labels;
+          trendChart.data.datasets[0].data = scores;
+          trendChart.data.datasets[1].data = rawScores;
+          trendChart.update("none");
+          return;
+        }
+
+        trendChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Vibe Score (Smoothed)",
+                data: scores,
+                borderColor: "#3b82f6",
+                backgroundColor: "rgba(59, 130, 246, 0.1)",
+                borderWidth: 2.5,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: "#3b82f6",
+                pointBorderWidth: 0,
+              },
+              {
+                label: "Raw Score",
+                data: rawScores,
+                borderColor: "rgba(148, 163, 184, 0.4)",
+                borderWidth: 1.5,
+                borderDash: [4, 4],
+                fill: false,
+                tension: 0.4,
+                pointRadius: 0,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: "index" },
+            plugins: {
+              legend: {
+                labels: {
+                  color: "#94a3b8",
+                  font: { family: "Inter", size: 11 },
+                },
+              },
+            },
+            scales: {
+              x: {
+                ticks: { color: "#64748b", font: { size: 10 } },
+                grid: { color: "rgba(100,120,180,0.06)" },
+              },
+              y: {
+                min: 0,
+                max: 100,
+                ticks: { color: "#64748b", font: { size: 10 }, stepSize: 20 },
+                grid: { color: "rgba(100,120,180,0.06)" },
+              },
+            },
+          },
+        });
+      }
+
+      // Update activity feed
+      function updateActivityFeed(history) {
+        const feed = document.getElementById("activityFeed");
+        document.getElementById("totalRuns").textContent = history.length;
+
+        if (history.length === 0) return;
+
+        const recent = history.slice().reverse().slice(0, 15);
+        feed.innerHTML = recent
+          .map((h, i) => {
+            const cls = getCssClass(h.classification);
+            const colors = getColor(h.classification);
+            const runNum = history.length - i;
+            return `
+                    <div class="activity-item">
+                        <div>
+                            <span class="activity-score" style="color: ${colors.main}">${h.score.toFixed(1)}</span>
+                            <span style="color: var(--text-muted); font-size: 0.75rem; margin-left: 6px;">Run #${runNum}</span>
+                        </div>
+                        <div class="activity-meta">
+                            <div class="activity-class" style="color: ${colors.main}">${h.classification}</div>
+                            <div class="activity-time">${formatTime(h.timestamp)}</div>
+                        </div>
+                    </div>
+                `;
+          })
+          .join("");
+      }
+
+      // Full refresh
+      async function refreshData() {
+        try {
+          const [scoreData, historyData] = await Promise.all([
+            fetchScore(),
+            fetchHistory(),
+          ]);
+          if (scoreData) {
+            document.getElementById("app").style.display = "none";
+            document.getElementById("dashboard").style.display = "block";
+            updateScoreDisplay(scoreData);
+            updateChart(historyData.history);
+            updateActivityFeed(historyData.history);
+          }
+        } catch (err) {
+          console.error("Refresh failed:", err);
+        }
+      }
+
+      // Run analysis
+      async function runAnalysis() {
+        const btn = document.getElementById("analyzeBtn");
+        btn.disabled = true;
+        btn.textContent = "⏳ Analyzing...";
+
+        try {
+          await fetch("/api/analyze", { method: "POST" });
+          await refreshData();
+        } catch (err) {
+          console.error("Analysis failed:", err);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "⚡ Run New Analysis";
+        }
+      }
+
+      // Init
+      refreshData();
+
+      // Auto-refresh every 30 seconds
+      setInterval(refreshData, 30000);
+    </script>
+  </body>
+</html>

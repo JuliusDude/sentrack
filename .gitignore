@@ -1,0 +1,46 @@
+# ─── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ─── Virtual Environments ─────────────────────────────────
+myenv/
+venv/
+.env/
+env/
+.venv/
+
+# ─── Distribution / Packaging ─────────────────────────────
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ─── IDE / Editor ─────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── OS Files ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ─── Environment Variables / Secrets ──────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── Logs ─────────────────────────────────────────────────
+*.log
+
+# ─── Hugging Face / Model Cache ───────────────────────────
+.cache/
+models/
+
+# ─── Misc ─────────────────────────────────────────────────
+*.bak
+*.tmp
