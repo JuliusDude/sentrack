@@ -770,6 +770,26 @@
         await fetchScore();
         await fetchHistory();
         setupEventListeners();
+        await syncAutomationState();
+      }
+
+      async function syncAutomationState() {
+        // On page load, check if backend has a running automation and stop it
+        // The toggle starts unchecked, so backend should not be running
+        try {
+          const resp = await fetch('/api/live/status');
+          const status = await resp.json();
+          if (status.active) {
+            console.log('Backend automation was running on page load — stopping it');
+            await fetch('/api/live/automation', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'stop' })
+            });
+          }
+        } catch (e) {
+          console.warn('Could not sync automation state:', e);
+        }
       }
 
       function setupEventListeners() {

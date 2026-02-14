@@ -427,14 +427,20 @@ async def live_automation_background_task(interval: str, query: str | None = Non
             logger.error(traceback.format_exc())
             await asyncio.sleep(5)
 
+    # Always reset state when exiting the loop (crash, cancel, or flag turned off)
+    live_automation_active = False
+    live_automation_task = None
+    logger.info("Live automation task exited — state reset")
+
 
 def start_live_automation(interval: str = "1min", query: str | None = None):
     """Start the live automation background task."""
     global live_automation_active, live_automation_task, live_automation_interval
     
+    # If already active, stop the old one first so the toggle always works
     if live_automation_active:
-        logger.warning("Live automation already active")
-        return {"error": "Live automation already active"}
+        logger.info("Stopping previous automation before restarting")
+        stop_live_automation()
     
     live_automation_active = True
     live_automation_interval = interval
@@ -447,9 +453,9 @@ def stop_live_automation():
     """Stop the live automation background task."""
     global live_automation_active, live_automation_task
     
-    if not live_automation_active:
-        logger.warning("Live automation not active")
-        return {"error": "Live automation not active"}
+    if not live_automation_active and live_automation_task is None:
+        # Already stopped — not an error, just a no-op
+        return {"status": "stopped", "message": "Was not running"}
     
     live_automation_active = False
     if live_automation_task:
@@ -614,11 +620,7 @@ async def control_live_automation(req: NewsControlRequest):
         )
     
     if req.action == "start":
-        if live_automation_active:
-            return JSONResponse(
-                {"error": "Live automation already active."},
-                status_code=400,
-            )
+        # If already active, we'll stop it first and restart (no error)
         
         # Validate interval
         if req.interval not in get_available_intervals():
