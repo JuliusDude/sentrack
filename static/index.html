@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SenTrack — Sentiment Oracle</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <style>
@@ -1360,22 +1360,30 @@
           return;
         }
         
-        // Prepare data for candlestick - group by time periods
-        const candlestickData = [];
+        // Build OHLC data from sentiment history
+        // open = previous close (or same as close for first), close = current score
+        // high/low add slight variance from raw_score to simulate real candle wicks
+        const ohlcData = [];
         
         for (let i = 0; i < history.length; i++) {
           const current = history[i];
           const prev = i > 0 ? history[i - 1] : current;
-          const next = i < history.length - 1 ? history[i + 1] : current;
           
-          // Calculate OHLC (Open, High, Low, Close)
           const open = prev.score;
           const close = current.score;
-          const high = Math.max(open, close, current.raw_score || close);
-          const low = Math.min(open, close, current.raw_score || close);
+          const raw = current.raw_score != null ? current.raw_score : close;
           
-          candlestickData.push({
-            x: i,
+          // Wicks extend to the extremes of open, close, raw_score + small random jitter
+          const jitter = (Math.abs(close - open) * 0.15) + 1.5;
+          const high = Math.min(100, Math.max(open, close, raw) + jitter);
+          const low  = Math.max(0,   Math.min(open, close, raw) - jitter);
+          
+          const ts = luxon.DateTime.fromISO(current.timestamp).isValid
+            ? luxon.DateTime.fromISO(current.timestamp)
+            : luxon.DateTime.fromJSDate(new Date(current.timestamp));
+          
+          ohlcData.push({
+            x: ts.toMillis(),
             o: open,
             h: high,
             l: low,
@@ -1387,42 +1395,27 @@
           candlestickChart.destroy();
         }
         
-        // Create labels
-        const labels = history.map((h, i) => {
-          const date = new Date(h.timestamp);
-          return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        });
-        
         candlestickChart = new Chart(ctx, {
-          type: 'bar',
+          type: 'candlestick',
           data: {
-            labels: labels,
             datasets: [{
-              label: 'High',
-              data: candlestickData.map(d => d.h),
-              backgroundColor: 'rgba(34, 197, 94, 0.3)',
-              borderColor: 'rgb(34, 197, 94)',
-              borderWidth: 1,
-              order: 2
-            }, {
-              label: 'Low',
-              data: candlestickData.map(d => d.l),
-              backgroundColor: 'rgba(239, 68, 68, 0.3)',
-              borderColor: 'rgb(239, 68, 68)',
-              borderWidth: 1,
-              order: 2
-            }, {
-              label: 'Close',
-              data: candlestickData.map(d => d.c),
-              type: 'line',
-              borderColor: 'rgb(59, 130, 246)',
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
-              borderWidth: 2,
-              fill: false,
-              tension: 0.4,
-              pointRadius: 3,
-              pointBackgroundColor: 'rgb(59, 130, 246)',
-              order: 1
+              label: 'Sentiment OHLC',
+              data: ohlcData,
+              color: {
+                up: 'rgba(34, 197, 94, 1)',      // bullish body border
+                down: 'rgba(239, 68, 68, 1)',     // bearish body border
+                unchanged: 'rgba(148, 163, 184, 1)'
+              },
+              backgroundColors: {
+                up: 'rgba(34, 197, 94, 0.85)',    // bullish fill
+                down: 'rgba(239, 68, 68, 0.85)',  // bearish fill
+                unchanged: 'rgba(148, 163, 184, 0.5)'
+              },
+              borderColor: {
+                up: 'rgb(34, 197, 94)',
+                down: 'rgb(239, 68, 68)',
+                unchanged: 'rgb(148, 163, 184)'
+              }
             }]
           },
           options: {
@@ -1430,59 +1423,76 @@
             maintainAspectRatio: false,
             plugins: {
               legend: {
-                display: true,
-                labels: {
-                  color: '#94a3b8',
-                  font: {
-                    size: 11
-                  }
-                }
+                display: false
               },
               tooltip: {
-                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                backgroundColor: 'rgba(15, 23, 42, 0.95)',
                 titleColor: '#e2e8f0',
                 bodyColor: '#94a3b8',
                 borderColor: 'rgba(100, 120, 180, 0.3)',
                 borderWidth: 1,
                 padding: 12,
+                displayColors: false,
                 callbacks: {
+                  title: function(tooltipItems) {
+                    const d = luxon.DateTime.fromMillis(tooltipItems[0].parsed.x);
+                    return d.toFormat('HH:mm:ss');
+                  },
                   label: function(context) {
-                    const index = context.dataIndex;
-                    const data = candlestickData[index];
+                    const o = context.parsed.o;
+                    const h = context.parsed.h;
+                    const l = context.parsed.l;
+                    const c = context.parsed.c;
+                    const dir = c >= o ? '▲ Bullish' : '▼ Bearish';
                     return [
-                      `Open: ${data.o.toFixed(1)}`,
-                      `High: ${data.h.toFixed(1)}`,
-                      `Low: ${data.l.toFixed(1)}`,
-                      `Close: ${data.c.toFixed(1)}`
+                      `Open:  ${o.toFixed(1)}`,
+                      `High:  ${h.toFixed(1)}`,
+                      `Low:   ${l.toFixed(1)}`,
+                      `Close: ${c.toFixed(1)}`,
+                      ``,
+                      dir
                     ];
                   }
                 }
               }
             },
             scales: {
+              x: {
+                type: 'timeseries',
+                time: {
+                  unit: 'minute',
+                  displayFormats: {
+                    minute: 'HH:mm',
+                    hour: 'HH:mm'
+                  },
+                  tooltipFormat: 'HH:mm:ss'
+                },
+                ticks: {
+                  color: '#94a3b8',
+                  maxRotation: 45,
+                  minRotation: 0,
+                  font: { size: 10 },
+                  source: 'data',
+                  autoSkip: true,
+                  maxTicksLimit: 12
+                },
+                grid: {
+                  color: 'rgba(100, 120, 180, 0.08)'
+                }
+              },
               y: {
-                beginAtZero: true,
+                min: 0,
                 max: 100,
                 grid: {
                   color: 'rgba(100, 120, 180, 0.1)'
                 },
                 ticks: {
                   color: '#94a3b8',
-                  font: {
-                    size: 11
-                  }
-                }
-              },
-              x: {
-                grid: {
-                  color: 'rgba(100, 120, 180, 0.1)'
-                },
-                ticks: {
-                  color: '#94a3b8',
-                  maxRotation: 45,
-                  minRotation: 45,
-                  font: {
-                    size: 10
+                  font: { size: 11 },
+                  stepSize: 10,
+                  callback: function(value) {
+                    if (value === 50) return '50 — Neutral';
+                    return value;
                   }
                 }
               }
