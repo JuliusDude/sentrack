@@ -8,7 +8,7 @@
 
 **SenTrack** is a sophisticated, multi-modal sentiment analysis platform for the crypto ecosystem. It gauges community "vibe" by analyzing real-time social data and news using advanced NLP models, and optionally publishes these sentiment scores on-chain via a Solidity Oracle.
 
-![SenTrack Dashboard](static/sentiment_dashboard_screenshot.png) <!-- meaningful placeholder if image exists, otherwise generic accessible text -->
+<img width="1710" height="920" alt="image" src="https://github.com/user-attachments/assets/3425eb87-76a2-47ba-8b28-27c21cc77ec5" >
 
 ---
 
