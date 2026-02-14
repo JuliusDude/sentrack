@@ -1,0 +1,101 @@
+polarity,id,date,query,user,text
+0,1001,Mon Apr 06 22:19:45 PDT 2009,NO_QUERY,user01,I am so frustrated with this broken software nothing works right
+4,1002,Mon Apr 06 22:19:49 PDT 2009,NO_QUERY,user02,Just had the most amazing dinner with friends feeling blessed tonight
+0,1003,Mon Apr 06 22:20:00 PDT 2009,NO_QUERY,user03,Traffic was absolutely terrible today wasted two hours commuting
+4,1004,Mon Apr 06 22:20:10 PDT 2009,NO_QUERY,user04,Loving the new album from my favorite band it is pure perfection
+0,1005,Mon Apr 06 22:20:15 PDT 2009,NO_QUERY,user05,My flight got canceled and the airline is not helping at all so angry
+4,1006,Mon Apr 06 22:20:20 PDT 2009,NO_QUERY,user06,Got a promotion at work today hard work really does pay off
+2,1007,Mon Apr 06 22:20:25 PDT 2009,NO_QUERY,user07,Just finished reading a book it was okay not great not terrible
+0,1008,Mon Apr 06 22:20:30 PDT 2009,NO_QUERY,user08,The customer service at this store is the worst I have ever experienced
+4,1009,Mon Apr 06 22:20:35 PDT 2009,NO_QUERY,user09,Beautiful sunset tonight nature never disappoints what a view
+0,1010,Mon Apr 06 22:20:40 PDT 2009,NO_QUERY,user10,Feeling so sick today this cold is absolutely killing me
+4,1011,Mon Apr 06 22:20:45 PDT 2009,NO_QUERY,user11,My team won the championship so proud of everyone who worked so hard
+0,1012,Mon Apr 06 22:20:50 PDT 2009,NO_QUERY,user12,Terrible movie total waste of money and time do not bother watching
+4,1013,Mon Apr 06 22:20:55 PDT 2009,NO_QUERY,user13,Just adopted a puppy from the shelter she is the cutest thing ever
+2,1014,Mon Apr 06 22:21:00 PDT 2009,NO_QUERY,user14,Weather is pretty normal today nothing special to report really
+0,1015,Mon Apr 06 22:21:05 PDT 2009,NO_QUERY,user15,My laptop crashed and I lost all my unsaved work feeling devastated
+4,1016,Mon Apr 06 22:21:10 PDT 2009,NO_QUERY,user16,The concert last night was absolutely incredible best show of my life
+0,1017,Mon Apr 06 22:21:15 PDT 2009,NO_QUERY,user17,So disappointed with the restaurant food was cold and service was slow
+4,1018,Mon Apr 06 22:21:20 PDT 2009,NO_QUERY,user18,Finally passed my driving test after months of practice so happy
+2,1019,Mon Apr 06 22:21:25 PDT 2009,NO_QUERY,user19,Just had lunch it was fine nothing memorable but it filled me up
+0,1020,Mon Apr 06 22:21:30 PDT 2009,NO_QUERY,user20,The wifi keeps dropping every five minutes this is so frustrating
+4,1021,Mon Apr 06 22:21:35 PDT 2009,NO_QUERY,user21,Made a delicious homemade pizza tonight cooking is so therapeutic
+0,1022,Mon Apr 06 22:21:40 PDT 2009,NO_QUERY,user22,Got a parking ticket today even though my meter still had time left
+4,1023,Mon Apr 06 22:21:45 PDT 2009,NO_QUERY,user23,My garden is blooming beautifully this spring all the effort was worth it
+0,1024,Mon Apr 06 22:21:50 PDT 2009,NO_QUERY,user24,The new phone update ruined my battery life everything is slower now
+4,1025,Mon Apr 06 22:21:55 PDT 2009,NO_QUERY,user25,Just finished a marathon my first one ever feeling on top of the world
+2,1026,Mon Apr 06 22:22:00 PDT 2009,NO_QUERY,user26,Watched the news today same old stories nothing really new happening
+0,1027,Mon Apr 06 22:22:05 PDT 2009,NO_QUERY,user27,Waited an hour for my food delivery only to get the wrong order
+4,1028,Mon Apr 06 22:22:10 PDT 2009,NO_QUERY,user28,Starting a new job on Monday so excited for this fresh beginning
+0,1029,Mon Apr 06 22:22:15 PDT 2009,NO_QUERY,user29,My favorite show just got canceled after only one season so unfair
+4,1030,Mon Apr 06 22:22:20 PDT 2009,NO_QUERY,user30,The kids art project turned out amazing so creative and colorful
+0,1031,Mon Apr 06 22:22:25 PDT 2009,NO_QUERY,user31,Allergies are killing me this season eyes watering and nonstop sneezing
+4,1032,Mon Apr 06 22:22:30 PDT 2009,NO_QUERY,user32,Found an amazing vintage jacket at the thrift store today great find
+2,1033,Mon Apr 06 22:22:35 PDT 2009,NO_QUERY,user33,Went to the gym did a regular workout nothing special feeling normal
+0,1034,Mon Apr 06 22:22:40 PDT 2009,NO_QUERY,user34,The construction noise outside my window is driving me absolutely crazy
+4,1035,Mon Apr 06 22:22:45 PDT 2009,NO_QUERY,user35,Just booked a vacation to Hawaii cannot wait for some beach time
+0,1036,Mon Apr 06 22:22:50 PDT 2009,NO_QUERY,user36,My order arrived damaged again this is the third time with this company
+4,1037,Mon Apr 06 22:22:55 PDT 2009,NO_QUERY,user37,Baked the most perfect chocolate cake today everyone loved it
+0,1038,Mon Apr 06 22:23:00 PDT 2009,NO_QUERY,user38,Got stuck in an elevator for thirty minutes today worst experience
+4,1039,Mon Apr 06 22:23:05 PDT 2009,NO_QUERY,user39,The new park in our neighborhood is wonderful kids absolutely love it
+2,1040,Mon Apr 06 22:23:10 PDT 2009,NO_QUERY,user40,Cleaned the house today looks the same as always nothing exciting
+0,1041,Mon Apr 06 22:23:15 PDT 2009,NO_QUERY,user41,Terrible headache all day long nothing seems to make it go away
+4,1042,Mon Apr 06 22:23:20 PDT 2009,NO_QUERY,user42,My best friend surprised me with birthday flowers so thoughtful
+0,1043,Mon Apr 06 22:23:25 PDT 2009,NO_QUERY,user43,The line at the post office was insanely long wasted my entire morning
+4,1044,Mon Apr 06 22:23:30 PDT 2009,NO_QUERY,user44,Learned to play a new song on guitar feeling really accomplished
+0,1045,Mon Apr 06 22:23:35 PDT 2009,NO_QUERY,user45,Spilled coffee all over my new white shirt right before a meeting
+4,1046,Mon Apr 06 22:23:40 PDT 2009,NO_QUERY,user46,The sunrise this morning was breathtaking started my day perfectly
+2,1047,Mon Apr 06 22:23:45 PDT 2009,NO_QUERY,user47,Had a meeting today it went as expected nothing surprising happened
+0,1048,Mon Apr 06 22:23:50 PDT 2009,NO_QUERY,user48,My neighbors are being incredibly loud again at midnight so inconsiderate
+4,1049,Mon Apr 06 22:23:55 PDT 2009,NO_QUERY,user49,Volunteered at the food bank today it feels so good to help others
+0,1050,Mon Apr 06 22:24:00 PDT 2009,NO_QUERY,user50,The app crashed three times while I was trying to place an order
+4,1051,Mon Apr 06 22:24:05 PDT 2009,NO_QUERY,user51,Got the cutest handwritten letter from my niece made my whole week
+0,1052,Mon Apr 06 22:24:10 PDT 2009,NO_QUERY,user52,This heat wave is unbearable cannot even step outside without melting
+4,1053,Mon Apr 06 22:24:15 PDT 2009,NO_QUERY,user53,Finished decorating the nursery it looks absolutely perfect and cozy
+2,1054,Mon Apr 06 22:24:20 PDT 2009,NO_QUERY,user54,Took the bus to work today same route same time nothing different
+0,1055,Mon Apr 06 22:24:25 PDT 2009,NO_QUERY,user55,My car broke down on the highway today repair bill is going to be huge
+4,1056,Mon Apr 06 22:24:30 PDT 2009,NO_QUERY,user56,The new coffee shop downtown is fantastic great vibes and amazing latte
+0,1057,Mon Apr 06 22:24:35 PDT 2009,NO_QUERY,user57,Got rejected from another job application feeling really discouraged
+4,1058,Mon Apr 06 22:24:40 PDT 2009,NO_QUERY,user58,Planted a vegetable garden today so excited to watch everything grow
+0,1059,Mon Apr 06 22:24:45 PDT 2009,NO_QUERY,user59,Stepped in a puddle wearing brand new shoes right after leaving home
+4,1060,Mon Apr 06 22:24:50 PDT 2009,NO_QUERY,user60,Night sky is crystal clear tonight the stars are absolutely stunning
+2,1061,Mon Apr 06 22:24:55 PDT 2009,NO_QUERY,user61,Watched a documentary about penguins it was informative nothing more
+0,1062,Mon Apr 06 22:25:00 PDT 2009,NO_QUERY,user62,The printer jammed again right when I needed to print something urgent
+4,1063,Mon Apr 06 22:25:05 PDT 2009,NO_QUERY,user63,Road trip with friends this weekend was the most fun I have had in years
+0,1064,Mon Apr 06 22:25:10 PDT 2009,NO_QUERY,user64,Got food poisoning from that sketchy restaurant never going back there
+4,1065,Mon Apr 06 22:25:15 PDT 2009,NO_QUERY,user65,The autumn leaves are gorgeous this year every walk feels like magic
+0,1066,Mon Apr 06 22:25:20 PDT 2009,NO_QUERY,user66,Power went out during the storm lost all my game progress so upset
+4,1067,Mon Apr 06 22:25:25 PDT 2009,NO_QUERY,user67,Just graduated with honors all those late nights studying were worth it
+2,1068,Mon Apr 06 22:25:30 PDT 2009,NO_QUERY,user68,Did some grocery shopping today got everything on the list pretty routine
+0,1069,Mon Apr 06 22:25:35 PDT 2009,NO_QUERY,user69,The hotel room smelled terrible and the bed was incredibly uncomfortable
+4,1070,Mon Apr 06 22:25:40 PDT 2009,NO_QUERY,user70,Saw a double rainbow today it felt like the universe was smiling at me
+0,1071,Mon Apr 06 22:25:45 PDT 2009,NO_QUERY,user71,My coworker took credit for my work in the meeting feeling so angry
+4,1072,Mon Apr 06 22:25:50 PDT 2009,NO_QUERY,user72,Made friends with my new neighbors they are the sweetest people
+0,1073,Mon Apr 06 22:25:55 PDT 2009,NO_QUERY,user73,Dropped my phone in the toilet today of all places this day is cursed
+4,1074,Mon Apr 06 22:26:00 PDT 2009,NO_QUERY,user74,The kids school play was adorable every parent was beaming with pride
+2,1075,Mon Apr 06 22:26:05 PDT 2009,NO_QUERY,user75,Read a few chapters of my book it was average writing nothing gripping
+0,1076,Mon Apr 06 22:26:10 PDT 2009,NO_QUERY,user76,My umbrella broke in the middle of a downpour ended up completely soaked
+4,1077,Mon Apr 06 22:26:15 PDT 2009,NO_QUERY,user77,Finally organizing all my photos into albums this is so satisfying
+0,1078,Mon Apr 06 22:26:20 PDT 2009,NO_QUERY,user78,The gym was so overcrowded today could barely find space to work out
+4,1079,Mon Apr 06 22:26:25 PDT 2009,NO_QUERY,user79,Ice cream on a hot day is one of lifes simplest and greatest pleasures
+0,1080,Mon Apr 06 22:26:30 PDT 2009,NO_QUERY,user80,Locked myself out of the house had to call a locksmith wallet hurts
+4,1081,Mon Apr 06 22:26:35 PDT 2009,NO_QUERY,user81,The fireworks show was spectacular best fourth of July celebration ever
+2,1082,Mon Apr 06 22:26:40 PDT 2009,NO_QUERY,user82,Commute was normal today no delays no surprises just the usual route
+0,1083,Mon Apr 06 22:26:45 PDT 2009,NO_QUERY,user83,This cold weather is making everything miserable cannot wait for spring
+4,1084,Mon Apr 06 22:26:50 PDT 2009,NO_QUERY,user84,Adopted a rescue cat today he is already purring on my lap pure love
+0,1085,Mon Apr 06 22:26:55 PDT 2009,NO_QUERY,user85,My bank charged me mystery fees again customer service was no help
+4,1086,Mon Apr 06 22:27:00 PDT 2009,NO_QUERY,user86,Homemade soup on a cold day is the ultimate comfort food delicious
+0,1087,Mon Apr 06 22:27:05 PDT 2009,NO_QUERY,user87,The dentist appointment was painful as expected not a fun experience
+4,1088,Mon Apr 06 22:27:10 PDT 2009,NO_QUERY,user88,Our family photo shoot turned out perfect everyone looks so happy
+2,1089,Mon Apr 06 22:27:15 PDT 2009,NO_QUERY,user89,Had cereal for breakfast same as every morning nothing changed
+0,1090,Mon Apr 06 22:27:20 PDT 2009,NO_QUERY,user90,The paint is already peeling off the wall shoddy work by the contractor
+4,1091,Mon Apr 06 22:27:25 PDT 2009,NO_QUERY,user91,Surprise party for mom was a huge success she was so touched and happy
+0,1092,Mon Apr 06 22:27:30 PDT 2009,NO_QUERY,user92,Forgot my lunch at home and the cafeteria was closed hungry all day
+4,1093,Mon Apr 06 22:27:35 PDT 2009,NO_QUERY,user93,First snowfall of the season everything outside looks magical and pure
+0,1094,Mon Apr 06 22:27:40 PDT 2009,NO_QUERY,user94,The rental car had a flat tire halfway through our road trip disaster
+4,1095,Mon Apr 06 22:27:45 PDT 2009,NO_QUERY,user95,My daughter said her first word today my heart literally melted
+2,1096,Mon Apr 06 22:27:50 PDT 2009,NO_QUERY,user96,Scrolled through my feed for a while nothing interesting catching my eye
+0,1097,Mon Apr 06 22:27:55 PDT 2009,NO_QUERY,user97,Package was marked delivered but nowhere to be found probably stolen
+4,1098,Mon Apr 06 22:28:00 PDT 2009,NO_QUERY,user98,Morning yoga session was exactly what I needed feeling centered and calm
+0,1099,Mon Apr 06 22:28:05 PDT 2009,NO_QUERY,user99,The movie sequel completely ruined the original story absolutely terrible
+4,1100,Mon Apr 06 22:28:10 PDT 2009,NO_QUERY,user100,Beach day with the family was pure bliss everyone had the best time

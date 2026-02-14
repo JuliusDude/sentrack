@@ -9,6 +9,7 @@
       content="SenTrack — Real-time crypto market sentiment oracle. Community Vibe Score powered by NLP analysis."
     />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
@@ -36,6 +37,9 @@
         --accent-neutral: #f59e0b;
         --accent-neutral-glow: rgba(245, 158, 11, 0.3);
         --accent-blue: #3b82f6;
+        --accent-purple: #8b5cf6;
+        --accent-cyan: #06b6d4;
+        --accent-live: #10b981;
         --gradient-bullish: linear-gradient(135deg, #22c55e, #10b981);
         --gradient-bearish: linear-gradient(135deg, #ef4444, #dc2626);
         --gradient-neutral: linear-gradient(135deg, #f59e0b, #d97706);
@@ -98,7 +102,7 @@
       /* Header */
       header {
         text-align: center;
-        padding: 40px 0 32px;
+        padding: 40px 0 20px;
       }
 
       header h1 {
@@ -118,9 +122,16 @@
         font-weight: 300;
       }
 
-      .engine-badge {
-        display: inline-block;
+      .header-badges {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
         margin-top: 12px;
+        flex-wrap: wrap;
+      }
+
+      .engine-badge, .source-badge {
+        display: inline-block;
         padding: 4px 14px;
         background: rgba(59, 130, 246, 0.1);
         border: 1px solid rgba(59, 130, 246, 0.25);
@@ -130,6 +141,140 @@
         font-weight: 500;
         letter-spacing: 0.05em;
         text-transform: uppercase;
+      }
+
+      .source-badge {
+        background: rgba(139, 92, 246, 0.1);
+        border-color: rgba(139, 92, 246, 0.25);
+        color: var(--accent-purple);
+      }
+
+      .source-badge.live {
+        background: rgba(16, 185, 129, 0.1);
+        border-color: rgba(16, 185, 129, 0.25);
+        color: var(--accent-live);
+      }
+
+      /* ─── Mode Toggle ─────────────────────────────── */
+      .mode-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        margin: 20px 0 28px;
+      }
+
+      .mode-toggle {
+        display: flex;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 4px;
+        gap: 4px;
+      }
+
+      .mode-btn {
+        padding: 10px 28px;
+        border: none;
+        border-radius: 11px;
+        font-family: "Inter", sans-serif;
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        background: transparent;
+        color: var(--text-muted);
+        position: relative;
+        letter-spacing: 0.02em;
+      }
+
+      .mode-btn:hover {
+        color: var(--text-secondary);
+        background: rgba(100, 120, 180, 0.08);
+      }
+
+      .mode-btn.active-test {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+        color: var(--accent-blue);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+      }
+
+      .mode-btn.active-live {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.15));
+        color: var(--accent-live);
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+      }
+
+      .mode-btn.locked {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .mode-btn .live-indicator {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        background: var(--accent-live);
+        border-radius: 50%;
+        margin-right: 6px;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      /* Dataset selector */
+      .dataset-selector {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .dataset-selector label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .dataset-select {
+        padding: 7px 14px;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-family: "Inter", sans-serif;
+        font-size: 0.82rem;
+        cursor: pointer;
+        transition: border-color 0.3s;
+        outline: none;
+      }
+
+      .dataset-select:hover, .dataset-select:focus {
+        border-color: rgba(100, 120, 180, 0.35);
+      }
+
+      .dataset-select option {
+        background: #0f172a;
+        color: var(--text-primary);
+      }
+
+      .live-notice {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: rgba(16, 185, 129, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        border-radius: 8px;
+        font-size: 0.8rem;
+        color: var(--accent-live);
+      }
+
+      .live-notice.warning {
+        background: rgba(245, 158, 11, 0.08);
+        border-color: rgba(245, 158, 11, 0.2);
+        color: var(--accent-neutral);
       }
 
       /* Cards */
@@ -437,9 +582,17 @@
         color: #fff;
       }
 
+      .btn-primary.live-mode {
+        background: linear-gradient(135deg, #10b981, #06b6d4);
+      }
+
       .btn-primary:hover {
         transform: translateY(-1px);
         box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+      }
+
+      .btn-primary.live-mode:hover {
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
       }
 
       .btn-primary:active {
@@ -464,7 +617,7 @@
         color: var(--text-primary);
       }
 
-      /* Pulse animation for live indicator */
+      /* Pulse animation */
       .live-dot {
         display: inline-block;
         width: 8px;
@@ -510,6 +663,41 @@
         }
       }
 
+      /* Chart type selector */
+      .chart-type-selector {
+        display: flex;
+        gap: 6px;
+        background: rgba(15, 23, 42, 0.5);
+        padding: 4px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+      }
+
+      .chart-type-btn {
+        padding: 6px 14px;
+        border: none;
+        border-radius: 6px;
+        font-family: "Inter", sans-serif;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: transparent;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+
+      .chart-type-btn:hover {
+        color: var(--text-secondary);
+        background: rgba(100, 120, 180, 0.1);
+      }
+
+      .chart-type-btn.active {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));
+        color: var(--accent-blue);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+      }
+
       /* Responsive */
       @media (max-width: 768px) {
         .grid-top {
@@ -524,6 +712,10 @@
         header h1 {
           font-size: 1.5rem;
         }
+        .mode-btn {
+          padding: 8px 18px;
+          font-size: 0.82rem;
+        }
       }
     </style>
   </head>
@@ -532,8 +724,36 @@
       <header>
         <h1>SenTrack</h1>
         <p>Tokenized Sentiment Oracle for Decentralized Markets</p>
-        <span class="engine-badge" id="engineBadge">Loading...</span>
+        <div class="header-badges">
+          <span class="engine-badge" id="engineBadge">Loading...</span>
+          <span class="source-badge" id="sourceBadge">—</span>
+        </div>
       </header>
+
+      <!-- Mode Toggle -->
+      <div class="mode-section">
+        <div class="mode-toggle">
+          <button class="mode-btn active-test" id="testModeBtn" onclick="switchMode('test')">
+            🧪 Test Mode
+          </button>
+          <button class="mode-btn" id="liveModeBtn" onclick="switchMode('live')">
+            <span class="live-indicator" style="display: none" id="liveDot"></span>
+            ⚡ Live Mode
+          </button>
+        </div>
+
+        <!-- Test: dataset selector | Live: status notice -->
+        <div id="modeControls">
+          <div class="dataset-selector" id="datasetSelector">
+            <label for="datasetSelect">Dataset:</label>
+            <select class="dataset-select" id="datasetSelect">
+              <option value="sample">Sample Tweets (52)</option>
+              <option value="kaggle">Kaggle Crypto (~150)</option>
+              <option value="sentiment140">Sentiment140 (~100)</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
       <div id="app">
         <div class="loading">
@@ -580,6 +800,10 @@
               <span class="stat-value" id="sampleSize">—</span>
             </div>
             <div class="stat-row">
+              <span class="stat-label">Data Source</span>
+              <span class="stat-value" id="dataSource">—</span>
+            </div>
+            <div class="stat-row">
               <span class="stat-label">Last Updated</span>
               <span class="stat-value" id="lastUpdated">—</span>
             </div>
@@ -593,7 +817,20 @@
         <!-- Bottom row: Chart | Activity Feed -->
         <div class="grid-bottom">
           <div class="card">
-            <div class="card-title">Sentiment Trend</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div class="card-title" style="margin-bottom: 0;">Sentiment Trend</div>
+              <div class="chart-type-selector">
+                <button class="chart-type-btn active" data-type="candlestick" onclick="switchChartType('candlestick')">
+                  📊 Candlestick
+                </button>
+                <button class="chart-type-btn" data-type="line" onclick="switchChartType('line')">
+                  📈 Line
+                </button>
+                <button class="chart-type-btn" data-type="bar" onclick="switchChartType('bar')">
+                  📊 Bar
+                </button>
+              </div>
+            </div>
             <div class="chart-container">
               <canvas id="trendChart"></canvas>
             </div>
@@ -615,7 +852,7 @@
             id="analyzeBtn"
             onclick="runAnalysis()"
           >
-            ⚡ Run New Analysis
+            🧪 Run Test Analysis
           </button>
           <button class="btn btn-ghost" onclick="refreshData()">
             ↻ Refresh Dashboard
@@ -625,9 +862,14 @@
     </div>
 
     <script>
+      // ─── State ──────────────────────────────────────
+      let currentMode = "test";
+      let currentChartType = "candlestick"; // Default chart type
       let trendChart = null;
+      let appConfig = {};
+      let chartHistory = []; // Store history for chart switching
 
-      // Color helpers
+      // ─── Color helpers ──────────────────────────────
       function getColor(classification) {
         const c = classification?.toLowerCase();
         if (c === "bullish")
@@ -650,21 +892,151 @@
         });
       }
 
-      // Fetch latest score
+      // ─── Config ─────────────────────────────────────
+      async function fetchConfig() {
+        try {
+          const res = await fetch("/api/settings");
+          if (!res.ok) return;
+          appConfig = await res.json();
+
+          // Update engine badge
+          if (appConfig.nlp_engine) {
+            document.getElementById("engineBadge").textContent =
+              "🧠 " + appConfig.nlp_engine.toUpperCase() + " Engine";
+          }
+
+          // Populate dataset selector
+          if (appConfig.test_datasets) {
+            const select = document.getElementById("datasetSelect");
+            select.innerHTML = "";
+            for (const [key, ds] of Object.entries(appConfig.test_datasets)) {
+              const opt = document.createElement("option");
+              opt.value = key;
+              opt.textContent = ds.label + " — " + ds.description;
+              select.appendChild(opt);
+            }
+          }
+
+          // Lock/unlock Live Mode
+          const liveBtn = document.getElementById("liveModeBtn");
+          if (!appConfig.neynar_configured) {
+            liveBtn.classList.add("locked");
+            liveBtn.title = "Neynar API key not configured. Add NEYNAR_API_KEY to your .env file.";
+          } else {
+            liveBtn.classList.remove("locked");
+            liveBtn.title = "Fetch live data from Farcaster";
+          }
+        } catch (err) {
+          console.error("Config fetch failed:", err);
+        }
+      }
+
+      // ─── Mode switching ─────────────────────────────
+      function switchMode(mode) {
+        if (mode === "live" && !appConfig.neynar_configured) {
+          // Show inline warning
+          const controls = document.getElementById("modeControls");
+          controls.innerHTML = `
+            <div class="live-notice warning">
+              ⚠️ Neynar API key not configured. Add <code>NEYNAR_API_KEY</code> to your <code>.env</code> file.
+              <a href="https://dev.neynar.com" target="_blank" style="color: inherit; text-decoration: underline; margin-left: 4px;">Get free key →</a>
+            </div>
+          `;
+          setTimeout(() => updateModeControls(), 4000);
+          return;
+        }
+
+        currentMode = mode;
+
+        // Update toggle visuals
+        const testBtn = document.getElementById("testModeBtn");
+        const liveBtn = document.getElementById("liveModeBtn");
+        const analyzeBtn = document.getElementById("analyzeBtn");
+        const liveDot = document.getElementById("liveDot");
+
+        testBtn.className = "mode-btn" + (mode === "test" ? " active-test" : "");
+        liveBtn.className = "mode-btn" + (mode === "live" ? " active-live" : "") +
+          (!appConfig.neynar_configured ? " locked" : "");
+
+        liveDot.style.display = mode === "live" ? "inline-block" : "none";
+
+        // Update button style and label
+        if (mode === "live") {
+          analyzeBtn.className = "btn btn-primary live-mode";
+          analyzeBtn.textContent = "⚡ Run Live Analysis";
+        } else {
+          analyzeBtn.className = "btn btn-primary";
+          analyzeBtn.textContent = "🧪 Run Test Analysis";
+        }
+
+        // Update mode controls
+        updateModeControls();
+
+        // Update source badge
+        updateSourceBadge();
+
+        // Refresh data for this mode
+        refreshData();
+      }
+
+      function updateModeControls() {
+        const controls = document.getElementById("modeControls");
+
+        if (currentMode === "test") {
+          controls.innerHTML = `
+            <div class="dataset-selector" id="datasetSelector">
+              <label for="datasetSelect">Dataset:</label>
+              <select class="dataset-select" id="datasetSelect" onchange="updateSourceBadge()">
+              </select>
+            </div>
+          `;
+          // Re-populate
+          if (appConfig.test_datasets) {
+            const select = document.getElementById("datasetSelect");
+            for (const [key, ds] of Object.entries(appConfig.test_datasets)) {
+              const opt = document.createElement("option");
+              opt.value = key;
+              opt.textContent = ds.label + " — " + ds.description;
+              select.appendChild(opt);
+            }
+          }
+        } else {
+          controls.innerHTML = `
+            <div class="live-notice">
+              <span class="live-indicator"></span>
+              Connected to Farcaster via Neynar API — fetching real-time crypto casts
+            </div>
+          `;
+        }
+      }
+
+      function updateSourceBadge() {
+        const badge = document.getElementById("sourceBadge");
+        if (currentMode === "live") {
+          badge.textContent = "📡 Farcaster Live";
+          badge.className = "source-badge live";
+        } else {
+          const select = document.getElementById("datasetSelect");
+          const label = select ? select.options[select.selectedIndex]?.textContent.split(" — ")[0] : "Test";
+          badge.textContent = "🧪 " + label;
+          badge.className = "source-badge";
+        }
+      }
+
+      // ─── API calls ──────────────────────────────────
       async function fetchScore() {
-        const res = await fetch("/api/score");
+        const res = await fetch(`/api/score?mode=${currentMode}`);
         if (!res.ok) return null;
         return res.json();
       }
 
-      // Fetch history
       async function fetchHistory() {
-        const res = await fetch("/api/history");
+        const res = await fetch(`/api/history?mode=${currentMode}`);
         if (!res.ok) return { history: [] };
         return res.json();
       }
 
-      // Update the score display
+      // ─── Update displays ────────────────────────────
       function updateScoreDisplay(data) {
         const cls = getCssClass(data.classification);
         const colors = getColor(data.classification);
@@ -697,7 +1069,9 @@
         // Stats
         document.getElementById("rawScore").textContent = data.raw_score;
         document.getElementById("sampleSize").textContent =
-          data.sample_size + " tweets";
+          data.sample_size + " texts";
+        document.getElementById("dataSource").textContent =
+          data.source || "—";
         document.getElementById("lastUpdated").textContent = formatTime(
           data.timestamp,
         );
@@ -705,15 +1079,183 @@
         // Engine badge
         document.getElementById("engineBadge").textContent =
           "🧠 " + data.nlp_engine.toUpperCase() + " Engine";
+
+        // Source badge
+        updateSourceBadge();
       }
 
-      // Update the chart
+      function switchChartType(type) {
+        currentChartType = type;
+        
+        // Update button states
+        document.querySelectorAll('.chart-type-btn').forEach(btn => {
+          btn.classList.remove('active');
+          if (btn.dataset.type === type) {
+            btn.classList.add('active');
+          }
+        });
+        
+        // Destroy existing chart and recreate with new type
+        if (trendChart) {
+          trendChart.destroy();
+          trendChart = null;
+        }
+        
+        // Redraw chart with stored history
+        if (chartHistory.length > 0) {
+          updateChart(chartHistory);
+        }
+      }
+
       function updateChart(history) {
-        const labels = history.map((h, i) => "Run " + (i + 1));
-        const scores = history.map((h) => h.score);
-        const rawScores = history.map((h) => h.raw_score);
+        if (!history || history.length === 0) {
+          return;
+        }
+
+        // Store history for chart type switching
+        chartHistory = history;
 
         const ctx = document.getElementById("trendChart").getContext("2d");
+        const labels = history.map((h, i) => "Run " + (i + 1));
+
+        // Destroy existing chart if switching types
+        if (trendChart && trendChart.config.type !== currentChartType) {
+          trendChart.destroy();
+          trendChart = null;
+        }
+
+        if (currentChartType === "candlestick") {
+          updateCandlestickChart(ctx, labels, history);
+        } else if (currentChartType === "line") {
+          updateLineChart(ctx, labels, history);
+        } else if (currentChartType === "bar") {
+          updateBarChart(ctx, labels, history);
+        }
+      }
+
+      function updateCandlestickChart(ctx, labels, history) {
+        // Prepare candlestick data
+        const candlestickData = [];
+        let previousClose = 50; // Initial baseline
+
+        history.forEach((h, i) => {
+          const open = previousClose;
+          const close = h.score;
+          const high = Math.max(h.score, h.raw_score, open);
+          const low = Math.min(h.score, h.raw_score, open);
+
+          candlestickData.push({
+            x: i + 1,
+            o: open,
+            h: high,
+            l: low,
+            c: close,
+          });
+
+          previousClose = close;
+        });
+
+        if (trendChart) {
+          trendChart.data.labels = labels;
+          trendChart.data.datasets[0].data = candlestickData;
+          trendChart.update("none");
+          return;
+        }
+
+        trendChart = new Chart(ctx, {
+          type: "candlestick",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Sentiment Delta",
+                data: candlestickData,
+                borderColor: function(context) {
+                  const data = context.raw;
+                  return data.c >= data.o ? "#22c55e" : "#ef4444";
+                },
+                backgroundColor: function(context) {
+                  const data = context.raw;
+                  return data.c >= data.o ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)";
+                },
+                borderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: "index" },
+            plugins: {
+              legend: {
+                display: true,
+                labels: {
+                  color: "#94a3b8",
+                  font: { family: "Inter", size: 11 },
+                  generateLabels: function(chart) {
+                    return [
+                      {
+                        text: "🟢 Positive Delta (Score Increased)",
+                        fillStyle: "rgba(34, 197, 94, 0.3)",
+                        strokeStyle: "#22c55e",
+                        lineWidth: 2,
+                      },
+                      {
+                        text: "🔴 Negative Delta (Score Decreased)",
+                        fillStyle: "rgba(239, 68, 68, 0.3)",
+                        strokeStyle: "#ef4444",
+                        lineWidth: 2,
+                      },
+                    ];
+                  },
+                },
+              },
+              tooltip: {
+                callbacks: {
+                  title: function(context) {
+                    return "Run #" + (context[0].dataIndex + 1);
+                  },
+                  label: function(context) {
+                    const data = context.raw;
+                    const idx = context.dataIndex;
+                    const classification = history[idx]?.classification || "";
+                    const delta = (data.c - data.o).toFixed(2);
+                    const deltaSymbol = delta >= 0 ? "+" : "";
+                    
+                    return [
+                      `Open: ${data.o.toFixed(2)}`,
+                      `Close: ${data.c.toFixed(2)}`,
+                      `High: ${data.h.toFixed(2)}`,
+                      `Low: ${data.l.toFixed(2)}`,
+                      `Delta: ${deltaSymbol}${delta}`,
+                      `Classification: ${classification}`,
+                    ];
+                  },
+                },
+              },
+            },
+            scales: {
+              x: {
+                type: "category",
+                ticks: { color: "#64748b", font: { size: 10 } },
+                grid: { color: "rgba(100,120,180,0.06)" },
+              },
+              y: {
+                min: 0,
+                max: 100,
+                ticks: { color: "#64748b", font: { size: 10 }, stepSize: 20 },
+                grid: { color: "rgba(100,120,180,0.06)" },
+              },
+            },
+          },
+        });
+      }
+
+      function updateLineChart(ctx, labels, history) {
+        const scores = history.map((h) => h.score);
+        const rawScores = history.map((h) => h.raw_score);
+        const lineColor = currentMode === "live" ? "#10b981" : "#3b82f6";
+        const bgColor = currentMode === "live" ? "rgba(16,185,129,0.1)" : "rgba(59,130,246,0.1)";
 
         if (trendChart) {
           trendChart.data.labels = labels;
@@ -731,13 +1273,13 @@
               {
                 label: "Vibe Score (Smoothed)",
                 data: scores,
-                borderColor: "#3b82f6",
-                backgroundColor: "rgba(59, 130, 246, 0.1)",
+                borderColor: lineColor,
+                backgroundColor: bgColor,
                 borderWidth: 2.5,
                 fill: true,
                 tension: 0.4,
                 pointRadius: 4,
-                pointBackgroundColor: "#3b82f6",
+                pointBackgroundColor: lineColor,
                 pointBorderWidth: 0,
               },
               {
@@ -780,12 +1322,105 @@
         });
       }
 
-      // Update activity feed
+      function updateBarChart(ctx, labels, history) {
+        const scores = history.map((h) => h.score);
+        const rawScores = history.map((h) => h.raw_score);
+        
+        // Color each bar based on sentiment classification
+        const barColors = history.map((h) => {
+          const cls = (h.classification || "").toLowerCase();
+          if (cls === "bullish") return "#22c55e";
+          if (cls === "bearish") return "#ef4444";
+          return "#f59e0b";
+        });
+
+        if (trendChart) {
+          trendChart.data.labels = labels;
+          trendChart.data.datasets[0].data = scores;
+          trendChart.data.datasets[0].backgroundColor = barColors;
+          trendChart.data.datasets[0].borderColor = barColors;
+          trendChart.data.datasets[1].data = rawScores;
+          trendChart.update("none");
+          return;
+        }
+
+        trendChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Vibe Score (Smoothed)",
+                data: scores,
+                backgroundColor: barColors,
+                borderColor: barColors,
+                borderWidth: 1,
+                borderRadius: 6,
+                barPercentage: 0.7,
+              },
+              {
+                label: "Raw Score",
+                data: rawScores,
+                type: "line",
+                borderColor: "rgba(148, 163, 184, 0.6)",
+                borderWidth: 2,
+                borderDash: [4, 4],
+                fill: false,
+                tension: 0.3,
+                pointRadius: 3,
+                pointBackgroundColor: "rgba(148, 163, 184, 0.8)",
+                pointBorderWidth: 0,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: "index" },
+            plugins: {
+              legend: {
+                labels: {
+                  color: "#94a3b8",
+                  font: { family: "Inter", size: 11 },
+                },
+              },
+              tooltip: {
+                callbacks: {
+                  afterLabel: function(context) {
+                    if (context.datasetIndex === 0) {
+                      const idx = context.dataIndex;
+                      const classification = history[idx]?.classification || "";
+                      return "Classification: " + classification;
+                    }
+                    return "";
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { color: "#64748b", font: { size: 10 } },
+                grid: { color: "rgba(100,120,180,0.06)" },
+              },
+              y: {
+                min: 0,
+                max: 100,
+                ticks: { color: "#64748b", font: { size: 10 }, stepSize: 20 },
+                grid: { color: "rgba(100,120,180,0.06)" },
+              },
+            },
+          },
+        });
+      }
+
       function updateActivityFeed(history) {
         const feed = document.getElementById("activityFeed");
         document.getElementById("totalRuns").textContent = history.length;
 
-        if (history.length === 0) return;
+        if (history.length === 0) {
+          feed.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem">No history yet for this mode.</p>';
+          return;
+        }
 
         const recent = history.slice().reverse().slice(0, 15);
         feed.innerHTML = recent
@@ -794,22 +1429,22 @@
             const colors = getColor(h.classification);
             const runNum = history.length - i;
             return `
-                    <div class="activity-item">
-                        <div>
-                            <span class="activity-score" style="color: ${colors.main}">${h.score.toFixed(1)}</span>
-                            <span style="color: var(--text-muted); font-size: 0.75rem; margin-left: 6px;">Run #${runNum}</span>
-                        </div>
-                        <div class="activity-meta">
-                            <div class="activity-class" style="color: ${colors.main}">${h.classification}</div>
-                            <div class="activity-time">${formatTime(h.timestamp)}</div>
-                        </div>
-                    </div>
-                `;
+              <div class="activity-item">
+                <div>
+                  <span class="activity-score" style="color: ${colors.main}">${h.score.toFixed(1)}</span>
+                  <span style="color: var(--text-muted); font-size: 0.75rem; margin-left: 6px;">Run #${runNum}</span>
+                </div>
+                <div class="activity-meta">
+                  <div class="activity-class" style="color: ${colors.main}">${h.classification}</div>
+                  <div class="activity-time">${formatTime(h.timestamp)}${h.source ? ' · ' + h.source : ''}</div>
+                </div>
+              </div>
+            `;
           })
           .join("");
       }
 
-      // Full refresh
+      // ─── Refresh ────────────────────────────────────
       async function refreshData() {
         try {
           const [scoreData, historyData] = await Promise.all([
@@ -822,31 +1457,76 @@
             updateScoreDisplay(scoreData);
             updateChart(historyData.history);
             updateActivityFeed(historyData.history);
+          } else {
+            // No data for this mode yet — show dashboard with empty state
+            document.getElementById("app").style.display = "none";
+            document.getElementById("dashboard").style.display = "block";
+            document.getElementById("scoreValue").textContent = "—";
+            document.getElementById("scoreValue").className = "score-value";
+            document.getElementById("classBadge").textContent = "—";
+            document.getElementById("classBadge").className = "classification-badge";
+            document.getElementById("rawScore").textContent = "—";
+            document.getElementById("sampleSize").textContent = "—";
+            document.getElementById("dataSource").textContent = "—";
+            document.getElementById("lastUpdated").textContent = "—";
+            document.getElementById("totalRuns").textContent = "0";
+            updateActivityFeed([]);
+            if (trendChart) {
+              trendChart.data.labels = [];
+              trendChart.data.datasets[0].data = [];
+              trendChart.data.datasets[1].data = [];
+              trendChart.update("none");
+            }
           }
         } catch (err) {
           console.error("Refresh failed:", err);
         }
       }
 
-      // Run analysis
+      // ─── Run analysis ───────────────────────────────
       async function runAnalysis() {
         const btn = document.getElementById("analyzeBtn");
         btn.disabled = true;
+        const originalText = btn.textContent;
         btn.textContent = "⏳ Analyzing...";
 
         try {
-          await fetch("/api/analyze", { method: "POST" });
+          const body = { mode: currentMode };
+
+          if (currentMode === "test") {
+            const select = document.getElementById("datasetSelect");
+            body.dataset = select ? select.value : "sample";
+          }
+
+          const res = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+
+          if (!res.ok) {
+            const err = await res.json();
+            console.error("Analysis error:", err);
+            alert(err.error || "Analysis failed.");
+          }
+
           await refreshData();
         } catch (err) {
           console.error("Analysis failed:", err);
         } finally {
           btn.disabled = false;
-          btn.textContent = "⚡ Run New Analysis";
+          btn.textContent = originalText;
         }
       }
 
-      // Init
-      refreshData();
+      // ─── Init ───────────────────────────────────────
+      async function init() {
+        await fetchConfig();
+        updateSourceBadge();
+        await refreshData();
+      }
+
+      init();
 
       // Auto-refresh every 30 seconds
       setInterval(refreshData, 30000);

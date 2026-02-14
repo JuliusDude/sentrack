@@ -4,3 +4,6 @@ vaderSentiment
 pandas
 transformers
 torch
+python-dotenv
+requests
+kagglehub[pandas-datasets]
