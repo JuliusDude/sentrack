@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SenTrack — Sentiment Oracle</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg-primary: #0a0e17;
+        --bg-card: rgba(15, 23, 42, 0.7);
+        --border: rgba(100, 120, 180, 0.15);
+        --text-primary: #e2e8f0;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --accent-bullish: #22c55e;
+        --accent-bearish: #ef4444;
+        --accent-neutral: #f59e0b;
+        --accent-blue: #3b82f6;
+      }
+
+      body {
+        font-family: "Inter", -apple-system, sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      /* Header */
+      .header {
+        text-align: center;
+        padding: 30px 0;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 20px;
+        backdrop-filter: blur(20px);
+      }
+
+      .header h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #e2e8f0, #3b82f6, #8b5cf6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.02em;
+      }
+
+      /* Mode Toggle */
+      .mode-toggle-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+
+      .mode-toggle {
+        display: inline-flex;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 6px;
+        gap: 6px;
+        backdrop-filter: blur(20px);
+      }
+
+      .mode-btn {
+        padding: 12px 32px;
+        border: none;
+        border-radius: 8px;
+        font-family: "Inter", sans-serif;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: transparent;
+        color: var(--text-muted);
+      }
+
+      .mode-btn.active {
+        background: var(--accent-blue);
+        color: white;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      }
+
+      .mode-btn:hover:not(.active) {
+        color: var(--text-primary);
+        background: rgba(100, 120, 180, 0.1);
+      }
+
+      /* Main Layout */
+      .main-layout {
+        display: grid;
+        grid-template-columns: 1fr 350px;
+        gap: 20px;
+      }
+
+      /* Left Section */
+      .left-section {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      /* Top Info Row */
+      .info-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+
+      .info-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        backdrop-filter: blur(20px);
+        transition: all 0.3s;
+      }
+
+      .info-card:hover {
+        border-color: rgba(100, 120, 180, 0.3);
+        transform: translateY(-2px);
+      }
+
+      .info-card h3 {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 12px;
+      }
+
+      .info-card .value {
+        font-size: 2.5rem;
+        font-weight: 900;
+        line-height: 1;
+        margin-bottom: 8px;
+      }
+
+      .info-card .value.bullish { color: var(--accent-bullish); }
+      .info-card .value.bearish { color: var(--accent-bearish); }
+      .info-card .value.neutral { color: var(--accent-neutral); }
+
+      .info-card .label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .badge.bullish {
+        background: linear-gradient(135deg, #22c55e, #10b981);
+        color: white;
+      }
+      .badge.bearish {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+      }
+      .badge.neutral {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+      }
+
+      .details-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .detail-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .detail-item:last-child {
+        border-bottom: none;
+      }
+
+      .detail-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+      }
+
+      .detail-value {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      /* Chart Card */
+      .chart-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        backdrop-filter: blur(20px);
+        min-height: 400px;
+      }
+
+      .chart-card h3 {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 20px;
+      }
+
+      /* Right Section - News */
+      .right-section {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .news-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        backdrop-filter: blur(20px);
+      }
+
+      .news-card h3 {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .news-item {
+        padding: 16px;
+        background: rgba(100, 120, 180, 0.05);
+        border-radius: 8px;
+        margin-bottom: 12px;
+        border-left: 3px solid transparent;
+        transition: all 0.3s;
+      }
+
+      .news-item:hover {
+        background: rgba(100, 120, 180, 0.1);
+        transform: translateX(4px);
+      }
+
+      .news-item.bullish {
+        border-left-color: var(--accent-bullish);
+      }
+
+      .news-item.bearish {
+        border-left-color: var(--accent-bearish);
+      }
+
+      .news-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        line-height: 1.4;
+      }
+
+      .news-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+      }
+
+      .news-score {
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: rgba(59, 130, 246, 0.1);
+      }
+
+      .news-score.bullish { 
+        color: var(--accent-bullish);
+        background: rgba(34, 197, 94, 0.1);
+      }
+      .news-score.bearish { 
+        color: var(--accent-bearish);
+        background: rgba(239, 68, 68, 0.1);
+      }
+
+      .latest-news-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        backdrop-filter: blur(20px);
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .latest-news-card h3 {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        background: var(--bg-card);
+        backdrop-filter: blur(20px);
+        z-index: 1;
+      }
+
+      .news-article {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        transition: background 0.3s;
+      }
+
+      .news-article:hover {
+        background: rgba(100, 120, 180, 0.05);
+      }
+
+      .news-article:last-child {
+        border-bottom: none;
+      }
+
+      .article-title {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        line-height: 1.4;
+        margin-bottom: 6px;
+      }
+
+      .article-time {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+      }
+
+      /* Loading spinner */
+      .spinner {
+        border: 3px solid var(--border);
+        border-top: 3px solid var(--accent-blue);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      /* Scrollbar styling */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: rgba(100, 120, 180, 0.05);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(100, 120, 180, 0.2);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 120, 180, 0.3);
+      }
+
+      /* Responsive */
+      @media (max-width: 1200px) {
+        .main-layout {
+          grid-template-columns: 1fr;
+        }
+        
+        .info-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .header h1 {
+          font-size: 1.8rem;
+        }
+        
+        .mode-btn {
+          padding: 10px 20px;
+          font-size: 0.85rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <div class="header">
+        <h1>SenTrack</h1>
+      </div>
+
+      <!-- Mode Toggle -->
+      <div class="mode-toggle-container">
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="testModeBtn">Test / Demo</button>
+          <button class="mode-btn" id="liveModeBtn">Live</button>
+          <button class="mode-btn" id="newsModeBtn">News</button>
+        </div>
+      </div>
+
+      <!-- Main Layout -->
+      <div class="main-layout">
+        <!-- Left Section -->
+        <div class="left-section">
+          <!-- Info Row -->
+          <div class="info-row">
+            <!-- Score Card -->
+            <div class="info-card">
+              <h3>Score</h3>
+              <div class="value neutral" id="scoreValue">--</div>
+              <div class="label">Community Vibe</div>
+            </div>
+
+            <!-- Market Sentiment Card -->
+            <div class="info-card">
+              <h3>Market Sentiment</h3>
+              <span class="badge neutral" id="sentimentBadge">Neutral</span>
+            </div>
+
+            <!-- Analysis Details Card -->
+            <div class="info-card">
+              <h3>Analysis Details</h3>
+              <div class="details-list">
+                <div class="detail-item">
+                  <span class="detail-label">Sample Size</span>
+                  <span class="detail-value" id="sampleSize">--</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Raw Score</span>
+                  <span class="detail-value" id="rawScore">--</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Engine</span>
+                  <span class="detail-value" id="engine">--</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart Card -->
+          <div class="chart-card">
+            <h3>Sentiment Trend Chart</h3>
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Right Section - News -->
+        <div class="right-section">
+          <!-- Most Bullish News -->
+          <div class="news-card">
+            <h3>Most Bullish</h3>
+            <div class="news-item bullish" id="mostBullish">
+              <div class="news-title">Loading...</div>
+              <div class="news-meta">
+                <span>--</span>
+                <span class="news-score bullish">--</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Most Bearish News -->
+          <div class="news-card">
+            <h3>Most Bearish</h3>
+            <div class="news-item bearish" id="mostBearish">
+              <div class="news-title">Loading...</div>
+              <div class="news-meta">
+                <span>--</span>
+                <span class="news-score bearish">--</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Latest News -->
+          <div class="latest-news-card">
+            <h3>Latest News</h3>
+            <div id="latestNews">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let currentMode = 'test';
+      let chart = null;
+
+      // Initialize
+      async function init() {
+        await fetchScore();
+        await fetchHistory();
+        setupEventListeners();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(async () => {
+          await fetchScore();
+          await fetchHistory();
+        }, 30000);
+      }
+
+      function setupEventListeners() {
+        document.getElementById('testModeBtn').addEventListener('click', () => switchMode('test'));
+        document.getElementById('liveModeBtn').addEventListener('click', () => switchMode('live'));
+        document.getElementById('newsModeBtn').addEventListener('click', () => switchMode('news'));
+      }
+
+      async function switchMode(mode) {
+        currentMode = mode;
+        
+        // Update UI
+        document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`${mode}ModeBtn`).classList.add('active');
+        
+        // Fetch new data
+        await fetchScore();
+        await fetchHistory();
+      }
+
+      async function fetchScore() {
+        try {
+          const response = await fetch(`/api/score?mode=${currentMode}`);
+          const data = await response.json();
+          
+          if (data.error) {
+            console.error(data.error);
+            return;
+          }
+
+          // Update score
+          const scoreEl = document.getElementById('scoreValue');
+          scoreEl.textContent = data.score.toFixed(1);
+          
+          // Update sentiment class
+          const sentiment = data.classification.toLowerCase();
+          scoreEl.className = `value ${sentiment}`;
+          
+          // Update badge
+          const badge = document.getElementById('sentimentBadge');
+          badge.textContent = data.classification;
+          badge.className = `badge ${sentiment}`;
+          
+          // Update details
+          document.getElementById('sampleSize').textContent = data.sample_size || '--';
+          document.getElementById('rawScore').textContent = data.raw_score ? data.raw_score.toFixed(2) : '--';
+          document.getElementById('engine').textContent = data.nlp_engine || '--';
+          
+          // Update news items
+          updateNewsItems(data);
+          
+        } catch (error) {
+          console.error('Error fetching score:', error);
+        }
+      }
+
+      function updateNewsItems(data) {
+        // Most Bullish
+        if (data.highest_tweet) {
+          const bullishEl = document.getElementById('mostBullish');
+          bullishEl.innerHTML = `
+            <div class="news-title">${truncateText(data.highest_tweet.text, 80)}</div>
+            <div class="news-meta">
+              <span>${data.highest_tweet.label}</span>
+              <span class="news-score bullish">${data.highest_tweet.score.toFixed(1)}</span>
+            </div>
+          `;
+        }
+        
+        // Most Bearish
+        if (data.lowest_tweet) {
+          const bearishEl = document.getElementById('mostBearish');
+          bearishEl.innerHTML = `
+            <div class="news-title">${truncateText(data.lowest_tweet.text, 80)}</div>
+            <div class="news-meta">
+              <span>${data.lowest_tweet.label}</span>
+              <span class="news-score bearish">${data.lowest_tweet.score.toFixed(1)}</span>
+            </div>
+          `;
+        }
+      }
+
+      async function fetchHistory() {
+        try {
+          const response = await fetch(`/api/history?mode=${currentMode}`);
+          const data = await response.json();
+          
+          if (data.history && data.history.length > 0) {
+            updateChart(data.history);
+            updateLatestNews(data.history);
+          }
+        } catch (error) {
+          console.error('Error fetching history:', error);
+        }
+      }
+
+      function updateChart(history) {
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        
+        const labels = history.map(h => new Date(h.timestamp).toLocaleTimeString());
+        const scores = history.map(h => h.score);
+        
+        if (chart) {
+          chart.destroy();
+        }
+        
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Sentiment Score',
+              data: scores,
+              borderColor: 'rgb(59, 130, 246)',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              tension: 0.4,
+              fill: true,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: 'rgb(59, 130, 246)',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 2,
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                grid: {
+                  color: 'rgba(100, 120, 180, 0.1)'
+                },
+                ticks: {
+                  color: '#94a3b8'
+                }
+              },
+              x: {
+                grid: {
+                  color: 'rgba(100, 120, 180, 0.1)'
+                },
+                ticks: {
+                  color: '#94a3b8',
+                  maxRotation: 45,
+                  minRotation: 45
+                }
+              }
+            }
+          }
+        });
+      }
+
+      function updateLatestNews(history) {
+        const newsContainer = document.getElementById('latestNews');
+        
+        if (history.length === 0) {
+          newsContainer.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">No data available</div>';
+          return;
+        }
+        
+        const recentItems = history.slice(-10).reverse();
+        
+        newsContainer.innerHTML = recentItems.map(item => `
+          <div class="news-article">
+            <div class="article-title">
+              Score: ${item.score.toFixed(1)} - ${item.classification} (${item.sample_size} samples)
+            </div>
+            <div class="article-time">${new Date(item.timestamp).toLocaleString()}</div>
+          </div>
+        `).join('');
+      }
+
+      function truncateText(text, maxLength) {
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
+      }
+
+      // Initialize on load
+      init();
+    </script>
+  </body>
+</html>

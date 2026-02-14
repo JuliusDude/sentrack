@@ -1,20 +1,24 @@
 """
 SenTrack — FastAPI Server
-Dual-mode sentiment oracle: Live (Farcaster) & Test (CSV datasets)
+Triple-mode sentiment oracle: Live (Farcaster), News (NewsAPI), & Test (CSV datasets)
 Pipeline: data → NLP → vibe score → API → dashboard
 """
 
 import os
 import logging
+import asyncio
+import random
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone as dt_timezone
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from data_loader import load_tweets, load_test_tweets, load_kaggle_sample
 from live_data import fetch_live_casts, is_configured as neynar_configured
+from news_data import fetch_crypto_news, is_configured as news_configured, get_available_intervals, get_interval_seconds
 from sentiment import analyze_batch, get_mode
 from vibe_score import calculate_vibe
 
@@ -39,6 +43,15 @@ logger = logging.getLogger(__name__)
 # ── In-memory state ──────────────────────────────────────────────
 live_history: list[dict] = []
 test_history: list[dict] = []
+
+# Live mode automation state
+live_automation_active = False
+live_automation_interval = "1min"  # default interval
+live_collection_buffer: list[dict] = []  # Buffer: [{"text": str, "sentiment": dict, "timestamp": str}]
+live_realtime_news: list[dict] = []  # Real-time news feed for Latest News section
+live_collection_start: datetime | None = None
+live_automation_task: asyncio.Task | None = None
+live_last_fetch_time: datetime | None = None
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
@@ -70,15 +83,10 @@ TEST_DATASETS = {
 def _run_analysis(texts: list[str], history: list[dict], source: str) -> dict:
     """Run sentiment analysis on texts and store result in history."""
     if not texts:
-        return {
-            "score": 50.0,
-            "classification": "Neutral",
-            "timestamp": "",
-            "sample_size": 0,
-            "raw_score": 50.0,
-            "source": source,
-            "error": "No texts to analyze.",
-        }
+        raise HTTPException(
+            status_code=404, 
+            detail="No texts found for analysis. Live mode: Check Neynar API key/status. Test mode: Check dataset."
+        )
 
 
     logger.info("Analyzing %d texts from '%s'...", len(texts), source)
@@ -149,10 +157,24 @@ def _run_analysis(texts: list[str], history: list[dict], source: str) -> dict:
 
 
 
-def run_live_analysis(query: str | None = None) -> dict:
-    """Fetch casts from Farcaster and analyze."""
-    casts = fetch_live_casts(query=query) if query else fetch_live_casts()
-    return _run_analysis(casts, live_history, "farcaster")
+def run_live_analysis(interval: str = "1min", query: str | None = None) -> dict:
+    """Fetch crypto news and analyze (Live mode uses NewsAPI)."""
+    interval_seconds = get_interval_seconds(interval)
+    from_time = datetime.utcnow() - timedelta(seconds=interval_seconds)
+    
+    news = fetch_crypto_news(query=query or "crypto OR bitcoin OR ethereum", from_time=from_time, limit=50)
+    
+    if not news:
+        logger.warning("No news articles found for live mode.")
+        prev = live_history[-1]["score"] if live_history else None
+        result = calculate_vibe([], previous_score=prev)
+        result["source"] = f"Live News ({interval})"
+        result["interval"] = interval
+        result["message"] = "No news articles found"
+        live_history.append(result)
+        return result
+    
+    return _run_analysis(news, live_history, f"Live News ({interval})")
 
 
 def run_test_analysis(dataset: str = "sample") -> dict:
@@ -174,14 +196,284 @@ def run_test_analysis(dataset: str = "sample") -> dict:
     return _run_analysis(texts, test_history, ds["label"])
 
 
+def run_news_analysis(interval: str = "1min", query: str | None = None) -> dict:
+    """Fetch news and analyze immediately (single fetch)."""
+    interval_seconds = get_interval_seconds(interval)
+    from_time = datetime.utcnow() - timedelta(seconds=interval_seconds)
+    
+    news = fetch_crypto_news(query=query, from_time=from_time) if query else fetch_crypto_news(from_time=from_time)
+    
+    if not news:
+        logger.warning("No news articles found for the given interval.")
+        # Return a neutral result instead of error
+        prev = news_history[-1]["score"] if news_history else None
+        result = calculate_vibe([], previous_score=prev)
+        result["source"] = f"News ({interval})"
+        result["interval"] = interval
+        result["message"] = "No news articles found in this interval"
+        news_history.append(result)
+        return result
+    
+    return _run_analysis(news, news_history, f"News ({interval})")
+
+
+# ── Live Mode Automation Background Task ────────────────────────────────────
+
+async def live_automation_background_task(interval: str, query: str | None = None):
+    """
+    Background task for Live mode automation.
+    1. Continuously fetch news during the interval and store RAW text (no analysis).
+    2. When the interval ends, randomly sample 9 articles (8:1 ratio).
+    3. Analyse ONLY those 9 articles with FinBERT/VADER.
+    4. Average their scores → that becomes the Vibe Score for this interval.
+    """
+    global live_automation_active, live_collection_buffer, live_realtime_news
+    global live_collection_start, live_last_fetch_time
+
+    interval_seconds = get_interval_seconds(interval)
+    fetch_frequency = 15  # Fetch new articles every 15 seconds
+    SAMPLE_SIZE = 9       # 8:1 → pick 9 articles
+    MIN_ARTICLES = 15     # Minimum articles before sampling
+    MAX_ARTICLES = 120    # Cap the buffer at this size
+
+    logger.info("═" * 60)
+    logger.info(f"LIVE AUTOMATION STARTED  interval={interval} ({interval_seconds}s)")
+    logger.info(f"Strategy: collect {MIN_ARTICLES}-{MAX_ARTICLES} news → sample {SAMPLE_SIZE} → analyse → avg score")
+    logger.info("═" * 60)
+
+    live_collection_start = datetime.utcnow()
+    live_collection_buffer = []   # Raw text buffer (no sentiment yet)
+    live_realtime_news = []
+    live_last_fetch_time = datetime.utcnow()
+    seen_texts: set[str] = set()  # Deduplicate across fetches
+
+    while live_automation_active:
+        try:
+            current_time = datetime.utcnow()
+
+            # ── Phase 1: Continuously collect raw news ──────────────────
+            time_since_last_fetch = (current_time - live_last_fetch_time).total_seconds()
+            if time_since_last_fetch >= fetch_frequency:
+                logger.info("Fetching latest crypto news...")
+                # Don't pass from_time — fetch latest articles and deduplicate
+                news_texts = fetch_crypto_news(
+                    query=query or "crypto OR bitcoin OR ethereum",
+                    limit=100
+                )
+
+                new_count = 0
+                if news_texts:
+                    for text in news_texts:
+                        if not text:
+                            continue
+                        # Stop if buffer is at max
+                        if len(live_collection_buffer) >= MAX_ARTICLES:
+                            break
+                        # Deduplicate
+                        text_key = text.strip().lower()[:100]
+                        if text_key in seen_texts:
+                            continue
+                        seen_texts.add(text_key)
+                        new_count += 1
+
+                        article_entry = {
+                            "text": text,
+                            "timestamp": datetime.utcnow().isoformat(),
+                            "analyzed": False,   # NOT yet analysed
+                            "sampled": False,
+                        }
+
+                        # Store in buffer for end-of-interval sampling
+                        live_collection_buffer.append(article_entry)
+
+                        # Also push to the real-time news feed (keep last 50)
+                        live_realtime_news.append(article_entry)
+                        if len(live_realtime_news) > 50:
+                            live_realtime_news.pop(0)
+
+                logger.info(f"  +{new_count} new articles  (buffer: {len(live_collection_buffer)}/{MAX_ARTICLES})")
+                live_last_fetch_time = current_time
+
+            # ── Phase 2: Interval completed → Sample & Analyse ──────────
+            time_in_interval = (current_time - live_collection_start).total_seconds()
+            if time_in_interval >= interval_seconds:
+                buffer_size = len(live_collection_buffer)
+
+                # If we haven't reached the minimum, keep collecting
+                if buffer_size < MIN_ARTICLES:
+                    logger.info(f"  Interval ended but only {buffer_size}/{MIN_ARTICLES} articles — still collecting...")
+                    await asyncio.sleep(2)
+                    continue
+
+                logger.info("─" * 60)
+                logger.info(f"INTERVAL COMPLETE  collected {buffer_size} articles (min={MIN_ARTICLES}, max={MAX_ARTICLES})")
+
+                if buffer_size > 0:
+                    # Randomly sample min(SAMPLE_SIZE, buffer_size) articles
+                    pick_count = min(SAMPLE_SIZE, buffer_size)
+                    sampled = random.sample(live_collection_buffer, pick_count)
+                    sampled_texts = [a["text"] for a in sampled]
+
+                    logger.info(f"  Randomly sampled {pick_count} / {buffer_size} articles (8:1 ratio)")
+
+                    # Analyse ONLY the sampled articles
+                    sentiments = analyze_batch(sampled_texts)
+
+                    scores = []
+                    analyzed_articles = []
+                    for text, sent in zip(sampled_texts, sentiments):
+                        if sent["label"] == "positive":
+                            score = 50 + (sent["confidence"] * 50)
+                        elif sent["label"] == "negative":
+                            score = 50 - (sent["confidence"] * 50)
+                        else:
+                            score = 50
+                        scores.append(score)
+                        analyzed_articles.append({
+                            "text": text,
+                            "sentiment": sent,
+                            "score": round(score, 2),
+                            "timestamp": datetime.utcnow().isoformat(),
+                            "analyzed": True,
+                            "sampled": True,
+                        })
+
+                    # Average the sampled scores
+                    avg_score = sum(scores) / len(scores)
+
+                    # Most bullish / bearish from the sample
+                    most_bullish = max(analyzed_articles, key=lambda x: x["score"])
+                    most_bearish = min(analyzed_articles, key=lambda x: x["score"])
+
+                    classification = (
+                        "Bullish" if avg_score >= 60 else
+                        "Bearish" if avg_score <= 40 else
+                        "Neutral"
+                    )
+
+                    result = {
+                        "score": round(avg_score, 2),
+                        "raw_score": round(avg_score, 2),
+                        "classification": classification,
+                        "timestamp": current_time.isoformat(),
+                        "sample_size": pick_count,
+                        "total_collected": buffer_size,
+                        "source": f"Live News ({interval})",
+                        "interval": interval,
+                        "highest_tweet": {
+                            "text": most_bullish["text"],
+                            "score": most_bullish["score"],
+                            "label": most_bullish["sentiment"]["label"],
+                            "confidence": most_bullish["sentiment"]["confidence"],
+                        },
+                        "lowest_tweet": {
+                            "text": most_bearish["text"],
+                            "score": most_bearish["score"],
+                            "label": most_bearish["sentiment"]["label"],
+                            "confidence": most_bearish["sentiment"]["confidence"],
+                        },
+                        "sampled_articles": analyzed_articles,
+                    }
+
+                    live_history.append(result)
+                    logger.info(f"  ★ Score: {avg_score:.2f} ({classification})  [{pick_count} sampled / {buffer_size} total]")
+
+                    # Mark sampled articles in the realtime feed so the UI can highlight them
+                    sampled_set = set(t.strip().lower()[:100] for t in sampled_texts if t)
+                    for article in live_realtime_news:
+                        art_text = article.get("text") or ""
+                        if not art_text:
+                            continue
+                        key = art_text.strip().lower()[:100]
+                        if key in sampled_set:
+                            match = next((a for a in analyzed_articles if a["text"] == article["text"]), None)
+                            if match:
+                                article["sentiment"] = match["sentiment"]
+                                article["score"] = match["score"]
+                                article["analyzed"] = True
+                                article["sampled"] = True
+                else:
+                    logger.info("  No articles collected in this interval")
+                    prev = live_history[-1]["score"] if live_history else 50
+                    result = {
+                        "score": prev,
+                        "raw_score": prev,
+                        "classification": "Neutral",
+                        "timestamp": current_time.isoformat(),
+                        "sample_size": 0,
+                        "total_collected": 0,
+                        "source": f"Live News ({interval})",
+                        "interval": interval,
+                        "message": "No articles in this interval",
+                    }
+                    live_history.append(result)
+
+                logger.info("─" * 60)
+
+                # Reset buffer for next interval
+                live_collection_buffer = []
+                live_collection_start = current_time
+                seen_texts.clear()
+
+            # Sleep briefly before next check
+            await asyncio.sleep(2)
+
+        except asyncio.CancelledError:
+            logger.info("Live automation task cancelled")
+            break
+        except Exception as e:
+            import traceback
+            logger.error(f"Error in live automation task: {e}")
+            logger.error(traceback.format_exc())
+            await asyncio.sleep(5)
+
+
+def start_live_automation(interval: str = "1min", query: str | None = None):
+    """Start the live automation background task."""
+    global live_automation_active, live_automation_task, live_automation_interval
+    
+    if live_automation_active:
+        logger.warning("Live automation already active")
+        return {"error": "Live automation already active"}
+    
+    live_automation_active = True
+    live_automation_interval = interval
+    live_automation_task = asyncio.create_task(live_automation_background_task(interval, query))
+    logger.info(f"Live automation started with {interval} interval")
+    return {"status": "started", "interval": interval}
+
+
+def stop_live_automation():
+    """Stop the live automation background task."""
+    global live_automation_active, live_automation_task
+    
+    if not live_automation_active:
+        logger.warning("Live automation not active")
+        return {"error": "Live automation not active"}
+    
+    live_automation_active = False
+    if live_automation_task:
+        live_automation_task.cancel()
+        live_automation_task = None
+    
+    logger.info("Live automation stopped")
+    return {"status": "stopped"}
+
+
 # ── App lifecycle ────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Run initial test analysis on startup."""
     logger.info("Running initial sentiment analysis (test mode)...")
-    run_test_analysis("sample")
+    try:
+        run_test_analysis("sample")
+    except Exception as e:
+        logger.warning(f"Initial analysis failed (non-fatal): {e}")
     yield
+    
+    # Cleanup on shutdown
+    stop_live_automation()
 
 
 app = FastAPI(title="SenTrack", lifespan=lifespan)
@@ -192,12 +484,19 @@ os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
-# ── Request model ────────────────────────────────────────────────
+# ── Request models ────────────────────────────────────────────────
 
 class AnalyzeRequest(BaseModel):
-    mode: str = "test"       # "live" or "test"
-    dataset: str = "sample"  # test dataset key (ignored for live)
-    query: str | None = None # custom search query (live mode only)
+    mode: str = "test"       # "live", "news", or "test"
+    dataset: str = "sample"  # test dataset key (ignored for live/news)
+    query: str | None = None # custom search query (live/news mode)
+    interval: str = "1min"   # time interval for news mode
+
+
+class NewsControlRequest(BaseModel):
+    action: str              # "start" or "stop"
+    interval: str = "1min"   # time interval (30s, 1min, 2min, 5min, 10min, 30min, 1hr)
+    query: str | None = None # custom search query
 
 
 # ── API Endpoints ────────────────────────────────────────────────
@@ -211,21 +510,33 @@ async def dashboard():
 @app.get("/api/settings")
 async def get_settings():
     """Return configuration status for the frontend."""
+    available_modes = ["test"]
+    if news_configured():
+        available_modes.append("live")  # Live mode now uses NewsAPI
+    
     return {
-        "neynar_configured": neynar_configured(),
-        "available_modes": ["test", "live"] if neynar_configured() else ["test"],
+        "news_configured": news_configured(),
+        "available_modes": available_modes,
         "test_datasets": {
             key: {"label": ds["label"], "description": ds["description"]}
             for key, ds in TEST_DATASETS.items()
         },
+        "news_intervals": get_available_intervals(),
         "nlp_engine": get_mode(),
+        "live_automation_active": live_automation_active,
+        "live_automation_interval": live_automation_interval if live_automation_active else None,
     }
 
 
 @app.get("/api/score")
 async def get_score(mode: str = Query("test")):
     """Get the latest Community Vibe Score for a given mode."""
-    history = live_history if mode == "live" else test_history
+    if mode == "live":
+        history = live_history
+    else:
+        history = test_history
+    
+    logger.info(f"GET /api/score mode={mode}, history_size={len(history)}")
 
     if not history:
         return JSONResponse(
@@ -242,10 +553,12 @@ async def get_score(mode: str = Query("test")):
         "sample_size": latest["sample_size"],
         "raw_score": latest["raw_score"],
         "source": latest.get("source", "unknown"),
+        "interval": latest.get("interval"),
         "nlp_engine": get_mode(),
         "mode": mode,
         "highest_tweet": latest.get("highest_tweet"),
         "lowest_tweet": latest.get("lowest_tweet"),
+        "message": latest.get("message"),
     }
 
 
@@ -253,7 +566,12 @@ async def get_score(mode: str = Query("test")):
 @app.get("/api/history")
 async def get_history(mode: str = Query("test")):
     """Get the score history for charting."""
-    history = live_history if mode == "live" else test_history
+    if mode == "live":
+        history = live_history
+    else:
+        history = test_history
+    
+    logger.info(f"GET /api/history mode={mode}, returning {len(history)} items")
     return {"history": history, "mode": mode}
 
 
@@ -262,12 +580,12 @@ async def trigger_analysis(req: AnalyzeRequest):
     """Trigger a new analysis batch."""
 
     if req.mode == "live":
-        if not neynar_configured():
+        if not news_configured():
             return JSONResponse(
-                {"error": "Neynar API key not configured. Add NEYNAR_API_KEY to your .env file."},
+                {"error": "News API key not configured. Add NEWS_API_KEY to your .env file."},
                 status_code=400,
             )
-        result = run_live_analysis(query=req.query)
+        result = run_live_analysis(interval=req.interval, query=req.query or "crypto OR bitcoin OR ethereum")
     else:
         result = run_test_analysis(dataset=req.dataset)
 
@@ -281,6 +599,97 @@ async def trigger_analysis(req: AnalyzeRequest):
         "timestamp": result["timestamp"],
         "source": result.get("source", "unknown"),
         "mode": req.mode,
+        "interval": result.get("interval"),
+    }
+
+
+@app.post("/api/live/automation")
+async def control_live_automation(req: NewsControlRequest):
+    """Start or stop live mode automation with continuous news collection."""
+    
+    if not news_configured():
+        return JSONResponse(
+            {"error": "News API key not configured. Add NEWS_API_KEY to your .env file."},
+            status_code=400,
+        )
+    
+    if req.action == "start":
+        if live_automation_active:
+            return JSONResponse(
+                {"error": "Live automation already active."},
+                status_code=400,
+            )
+        
+        # Validate interval
+        if req.interval not in get_available_intervals():
+            return JSONResponse(
+                {"error": f"Invalid interval. Available: {list(get_available_intervals().keys())}"},
+                status_code=400,
+            )
+        
+        result = start_live_automation(interval=req.interval, query=req.query)
+        if "error" in result:
+            return JSONResponse(result, status_code=400)
+        
+        return {
+            "message": f"Live automation started with {req.interval} aggregation interval",
+            "interval": req.interval,
+            "interval_seconds": get_interval_seconds(req.interval),
+            "active": True,
+        }
+    
+    elif req.action == "stop":
+        result = stop_live_automation()
+        if "error" in result:
+            return JSONResponse(result, status_code=400)
+        
+        return {
+            "message": "Live automation stopped",
+            "active": False,
+        }
+    
+    else:
+        return JSONResponse(
+            {"error": "Invalid action. Use 'start' or 'stop'."},
+            status_code=400,
+        )
+
+
+@app.get("/api/live/realtime-news")
+async def get_realtime_news():
+    """Get the real-time news feed (last 50 articles with sentiment)."""
+    return {
+        "news": list(reversed(live_realtime_news)),  # Newest first
+        "count": len(live_realtime_news),
+        "automation_active": live_automation_active,
+        "current_interval": live_automation_interval if live_automation_active else None,
+        "collection_start": live_collection_start.isoformat() if live_collection_start else None,
+        "buffer_size": len(live_collection_buffer)
+    }
+
+
+@app.get("/api/live/status")
+async def get_live_status():
+    """Get current live automation status with interval progress."""
+    elapsed = 0.0
+    remaining = 0.0
+    interval_secs = 0
+    if live_automation_active and live_collection_start:
+        interval_secs = get_interval_seconds(live_automation_interval)
+        elapsed = (datetime.utcnow() - live_collection_start).total_seconds()
+        remaining = max(0, interval_secs - elapsed)
+
+    return {
+        "active": live_automation_active,
+        "interval": live_automation_interval if live_automation_active else None,
+        "interval_seconds": interval_secs,
+        "elapsed_seconds": round(elapsed, 1),
+        "remaining_seconds": round(remaining, 1),
+        "articles_in_buffer": len(live_collection_buffer),
+        "realtime_feed_size": len(live_realtime_news),
+        "total_scores": len(live_history),
+        "last_fetch": live_last_fetch_time.isoformat() if live_last_fetch_time else None,
+        "collection_start": live_collection_start.isoformat() if live_collection_start else None,
     }
 
 
