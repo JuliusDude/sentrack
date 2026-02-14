@@ -705,64 +705,74 @@ async def get_live_status():
 
 async def contribute_scan_task_fn():
     """
-    1-minute scan: collect news → sample 25 → analyse → return average score.
-    This is independent from the Live automation loop.
+    Quick scan: fetch diverse crypto news → sample 25 → analyse → return average score.
+    Uses multiple queries to get a broader, fresher article pool.
     """
     global contribute_scan_active, contribute_scan_result, contribute_scan_progress
 
-    SCAN_DURATION = 60   # seconds
-    FETCH_FREQ = 15      # fetch every 15s
     SAMPLE_SIZE = 25
-    query = "crypto OR bitcoin OR ethereum"
+    FETCH_FREQ = 5   # seconds between fetches
+
+    # Rotate through varied queries to pull in different articles
+    queries = [
+        "crypto OR bitcoin OR ethereum",
+        "blockchain OR defi OR web3",
+        "bitcoin price OR ethereum price OR crypto market",
+        "altcoin OR solana OR polygon OR cardano",
+        "crypto regulation OR SEC OR crypto policy",
+        "NFT OR metaverse OR crypto gaming",
+    ]
+
     buffer: list[dict] = []
     seen: set[str] = set()
     start = datetime.utcnow()
+    query_idx = 0
     last_fetch = datetime.utcnow() - timedelta(seconds=FETCH_FREQ)  # trigger immediate first fetch
+    total_fetched_raw = 0
 
     contribute_scan_progress = {"phase": "collecting", "articles": 0, "elapsed": 0, "message": "Starting scan..."}
 
     try:
-        while contribute_scan_active:
+        while contribute_scan_active and query_idx < len(queries):
             now = datetime.utcnow()
             elapsed = (now - start).total_seconds()
-            remaining = max(0, SCAN_DURATION - elapsed)
             contribute_scan_progress["elapsed"] = round(elapsed)
 
-            # Fetch
+            # Fetch with current query
             if (now - last_fetch).total_seconds() >= FETCH_FREQ:
+                q = queries[query_idx]
                 try:
-                    articles = fetch_crypto_news(query=query, limit=100)
+                    texts_raw = fetch_crypto_news(query=q, limit=100)
+                    total_fetched_raw += len(texts_raw)
                     new_count = 0
-                    for art in articles:
-                        key = (art.get("title") or "").strip()[:80]
-                        if key and key not in seen:
+                    for text in texts_raw:
+                        if not text or len(text.strip()) < 10:
+                            continue
+                        key = text.strip().lower()[:100]
+                        if key not in seen:
                             seen.add(key)
-                            text = f"{(art.get('title') or '').strip()}. {(art.get('description') or '').strip()}"
-                            if len(text.strip()) > 5:
-                                buffer.append({"text": text, "title": art.get("title", "")})
-                                new_count += 1
-                    logger.info(f"[Contribute] Fetched {len(articles)} articles, +{new_count} new (buffer: {len(buffer)})")
+                            buffer.append({"text": text})
+                            new_count += 1
+                    logger.info(f"[Contribute] Query '{q[:30]}...' → {len(texts_raw)} raw, +{new_count} new (buffer: {len(buffer)})")
                 except Exception as e:
                     logger.error(f"[Contribute] Fetch error: {e}")
                 last_fetch = now
+                query_idx += 1
 
-            contribute_scan_progress["articles"] = len(buffer)
-            contribute_scan_progress["message"] = f"Collecting... {int(remaining)}s left ({len(buffer)} articles)"
+                contribute_scan_progress["articles"] = len(buffer)
+                progress_pct = round((query_idx / len(queries)) * 100)
+                contribute_scan_progress["message"] = f"Scanning ({query_idx}/{len(queries)} sources)... {len(buffer)} unique articles"
 
-            # Time's up?
-            if elapsed >= SCAN_DURATION:
-                break
-
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
 
         # ── Phase 2: Sample & Analyse ──
         contribute_scan_progress["phase"] = "analyzing"
         contribute_scan_progress["message"] = f"Sampling {SAMPLE_SIZE} of {len(buffer)} articles..."
 
-        if len(buffer) < 5:
-            contribute_scan_result = {"error": "Not enough articles collected", "score": None}
+        if len(buffer) < 3:
+            contribute_scan_result = {"error": f"Only {len(buffer)} articles found — need at least 3", "score": None}
             contribute_scan_progress["phase"] = "error"
-            contribute_scan_progress["message"] = "Not enough articles"
+            contribute_scan_progress["message"] = f"Only {len(buffer)} articles — not enough"
             return
 
         pick_count = min(SAMPLE_SIZE, len(buffer))
@@ -771,8 +781,19 @@ async def contribute_scan_task_fn():
 
         contribute_scan_progress["message"] = f"Analyzing {pick_count} articles with FinBERT..."
 
-        results = analyze_batch(texts)
-        scores = [r["score"] for r in results]
+        sentiments = analyze_batch(texts)
+
+        # Convert label/confidence → 0-100 score (same logic as live automation)
+        scores = []
+        for sent in sentiments:
+            if sent["label"] == "positive":
+                score = 50 + (sent["confidence"] * 50)
+            elif sent["label"] == "negative":
+                score = 50 - (sent["confidence"] * 50)
+            else:
+                score = 50
+            scores.append(score)
+
         avg_score = round(sum(scores) / len(scores), 2)
         classification = "Bullish" if avg_score >= 60 else "Bearish" if avg_score <= 40 else "Neutral"
 

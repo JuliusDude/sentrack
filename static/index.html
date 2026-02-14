@@ -824,23 +824,33 @@
             <!-- Step 1: Scanning -->
             <div id="contribStep1" class="contrib-step">
               <div class="contrib-icon">&#128225;</div>
-              <div class="contrib-phase" id="contribPhaseText">Starting 1-minute scan...</div>
+              <div class="contrib-phase" id="contribPhaseText">Scanning multiple crypto sources...</div>
               <div class="contrib-progress-bar"><div class="contrib-progress-fill" id="contribProgressFill"></div></div>
-              <div class="contrib-stats" id="contribStats">0 articles collected &middot; 0s / 60s</div>
+              <div class="contrib-stats" id="contribStats">0 unique articles collected</div>
               <button class="btn btn-secondary" id="contribCancelBtn" style="margin-top:12px;">Cancel</button>
             </div>
-            <!-- Step 2: Result + Push -->
+            <!-- Step 2: Result — choose Submit or Dismiss -->
             <div id="contribStep2" class="contrib-step" style="display:none;">
               <div class="contrib-icon" id="contribResultIcon">&#9989;</div>
+              <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">Scan Complete</div>
               <div class="contrib-score-display">
                 <span class="contrib-score-value" id="contribScoreValue">--</span>
                 <span class="contrib-score-label" id="contribScoreLabel">Neutral</span>
               </div>
               <div class="contrib-meta" id="contribMeta">25 sampled / 97 collected &middot; FinBERT</div>
-              <button class="btn btn-contribute" id="contribPushBtn" style="margin-top:16px; width:100%;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                Push Score On-Chain
-              </button>
+              <div style="margin-top: 18px; display: flex; gap: 10px;">
+                <button class="btn btn-contribute" id="contribPushBtn" style="flex: 1;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                  Submit On-Chain
+                </button>
+                <button class="btn btn-secondary" id="contribDismissBtn" style="flex: 0.6;">
+                  Dismiss
+                </button>
+              </div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 10px;">
+                Submit pushes this score to the smart contract via MetaMask.<br>
+                Dismiss closes without writing anything on-chain.
+              </div>
             </div>
             <!-- Step 3: Transaction -->
             <div id="contribStep3" class="contrib-step" style="display:none;">
@@ -2122,7 +2132,7 @@
       ];
 
       // Deployed CommunitySentimentOracle on Polygon Amoy
-      const CONTRACT_ADDRESS = '0xDa78C384B2F773568A678bA248faaC50C92BE7127';
+      const CONTRACT_ADDRESS = '0xDa78C384B2F773568A678bA248faa50C92BE7127';
 
       let contributeScanScore = null;
       let contributeScanPolling = null;
@@ -2131,6 +2141,7 @@
       document.getElementById('contributeModalClose').addEventListener('click', closeContributeModal);
       document.getElementById('contribCancelBtn').addEventListener('click', cancelContribute);
       document.getElementById('contribPushBtn').addEventListener('click', pushScoreOnChain);
+      document.getElementById('contribDismissBtn').addEventListener('click', closeContributeModal);
 
       // Close modal on backdrop click
       document.getElementById('contributeModal').addEventListener('click', (e) => {
@@ -2146,8 +2157,9 @@
         document.getElementById('contribStep2').style.display = 'none';
         document.getElementById('contribStep3').style.display = 'none';
         document.getElementById('contribProgressFill').style.width = '0%';
-        document.getElementById('contribPhaseText').textContent = 'Starting 1-minute scan...';
-        document.getElementById('contribStats').textContent = '0 articles collected \u00b7 0s / 60s';
+        document.getElementById('contribProgressFill').style.background = 'linear-gradient(90deg, #7c3aed, #a78bfa)';
+        document.getElementById('contribPhaseText').textContent = 'Scanning multiple crypto sources...';
+        document.getElementById('contribStats').textContent = '0 unique articles collected';
         contributeScanScore = null;
 
         // Start backend scan
@@ -2165,8 +2177,8 @@
           return;
         }
 
-        // Poll progress
-        contributeScanPolling = setInterval(pollContributeStatus, 2000);
+        // Poll progress (every 1.5s for faster feedback)
+        contributeScanPolling = setInterval(pollContributeStatus, 1500);
       }
 
       async function pollContributeStatus() {
@@ -2174,10 +2186,19 @@
           const resp = await fetch('/api/contribute/status');
           const s = await resp.json();
 
-          const pct = Math.min(100, Math.round((s.elapsed / 60) * 100));
+          // Progress based on message content (backend reports X/6 sources)
+          const sourceMatch = s.message.match(/(\d+)\/(\d+) sources/);
+          let pct = 0;
+          if (s.phase === 'analyzing') {
+            pct = 90;
+          } else if (sourceMatch) {
+            pct = Math.round((parseInt(sourceMatch[1]) / parseInt(sourceMatch[2])) * 80);
+          } else {
+            pct = Math.min(80, Math.round((s.elapsed / 40) * 80));
+          }
           document.getElementById('contribProgressFill').style.width = pct + '%';
           document.getElementById('contribPhaseText').textContent = s.message || 'Scanning...';
-          document.getElementById('contribStats').textContent = `${s.articles} articles collected \u00b7 ${s.elapsed}s / 60s`;
+          document.getElementById('contribStats').textContent = `${s.articles} unique articles · ${s.elapsed}s elapsed`;
 
           if (s.phase === 'done' && s.result && s.result.score != null) {
             clearInterval(contributeScanPolling);
@@ -2187,7 +2208,10 @@
           } else if (s.phase === 'error' || s.phase === 'cancelled') {
             clearInterval(contributeScanPolling);
             contributeScanPolling = null;
+            document.getElementById('contribProgressFill').style.width = '100%';
+            document.getElementById('contribProgressFill').style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
             document.getElementById('contribPhaseText').textContent = s.message || 'Scan failed';
+            document.getElementById('contribStats').textContent = s.phase === 'cancelled' ? 'Cancelled by user' : 'Try again — click the button once more';
           }
         } catch(e) {
           console.error('Contribute poll error:', e);
