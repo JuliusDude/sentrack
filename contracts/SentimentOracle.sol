@@ -1,57 +1,83 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
-/**
- * @title SentimentOracle
- * @notice On-chain oracle for Community Vibe sentiment scores.
- *         Designed for low gas cost: stores only latest state,
- *         uses events for immutable history.
- */
-contract SentimentOracle {
-    address public owner;
-    uint256 public latestScore;
-    uint256 public lastUpdated;
+contract CommunitySentimentOracle {
 
-    event ScoreUpdated(
+    // ================================
+    // STRUCT
+    // ================================
+
+    struct Sentiment {
+        uint256 score;        // Sentiment score (0-100)
+        uint256 timestamp;    // Block timestamp
+        address contributor;  // Wallet address
+    }
+
+    // ================================
+    // STATE VARIABLES
+    // ================================
+
+    Sentiment[] private sentiments;
+
+    // Anti-spam: 1 submission per minute per wallet
+    mapping(address => uint256) public lastSubmissionTime;
+
+    uint256 public constant MIN_INTERVAL = 60; // 60 seconds
+
+    // ================================
+    // EVENTS (Frontend will use this for chart)
+    // ================================
+
+    event SentimentSubmitted(
         uint256 indexed score,
-        uint256 timestamp,
-        address indexed updatedBy
+        uint256 indexed timestamp,
+        address indexed contributor
     );
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not authorized");
-        _;
+    // ================================
+    // MAIN FUNCTION
+    // ================================
+
+    function submitSentiment(uint256 _score) external {
+
+        require(_score <= 100, "Score must be between 0 and 100");
+
+        require(
+            block.timestamp >= lastSubmissionTime[msg.sender] + MIN_INTERVAL,
+            "Wait before submitting again"
+        );
+
+        lastSubmissionTime[msg.sender] = block.timestamp;
+
+        Sentiment memory newSentiment = Sentiment({
+            score: _score,
+            timestamp: block.timestamp,
+            contributor: msg.sender
+        });
+
+        sentiments.push(newSentiment);
+
+        emit SentimentSubmitted(
+            _score,
+            block.timestamp,
+            msg.sender
+        );
     }
 
-    constructor() {
-        owner = msg.sender;
-        latestScore = 50; // Default neutral
-        lastUpdated = block.timestamp;
+    // ================================
+    // VIEW FUNCTIONS
+    // ================================
+
+    function getSentiment(uint256 index) external view returns (
+        uint256 score,
+        uint256 timestamp,
+        address contributor
+    ) {
+        Sentiment memory s = sentiments[index];
+        return (s.score, s.timestamp, s.contributor);
     }
 
-    /**
-     * @notice Update the sentiment score. Owner only.
-     * @param _score Vibe score between 0 and 100.
-     */
-    function updateScore(uint256 _score) external onlyOwner {
-        require(_score <= 100, "Score must be 0-100");
-        latestScore = _score;
-        lastUpdated = block.timestamp;
-        emit ScoreUpdated(_score, block.timestamp, msg.sender);
-    }
-
-    /**
-     * @notice Read the latest sentiment score.
-     */
-    function getScore() external view returns (uint256 score, uint256 updated) {
-        return (latestScore, lastUpdated);
-    }
-
-    /**
-     * @notice Transfer ownership to a new address.
-     */
-    function transferOwnership(address _newOwner) external onlyOwner {
-        require(_newOwner != address(0), "Invalid address");
-        owner = _newOwner;
+    function getTotalSubmissions() external view returns (uint256) {
+        return sentiments.length;
     }
 }

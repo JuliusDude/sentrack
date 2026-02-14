@@ -44,3 +44,10 @@ models/
 # ─── Misc ─────────────────────────────────────────────────
 *.bak
 *.tmp
+
+# ─── Hardhat / Node ──────────────────────────────────────
+node_modules/
+artifacts/
+cache/
+typechain-types/
+package-lock.json

@@ -53,6 +53,12 @@ live_collection_start: datetime | None = None
 live_automation_task: asyncio.Task | None = None
 live_last_fetch_time: datetime | None = None
 
+# Contribute scan state
+contribute_scan_active = False
+contribute_scan_task: asyncio.Task | None = None
+contribute_scan_result: dict | None = None
+contribute_scan_progress: dict = {"phase": "idle", "articles": 0, "elapsed": 0, "message": ""}
+
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 # Available test datasets
@@ -232,8 +238,8 @@ async def live_automation_background_task(interval: str, query: str | None = Non
 
     interval_seconds = get_interval_seconds(interval)
     fetch_frequency = 15  # Fetch new articles every 15 seconds
-    SAMPLE_SIZE = 9       # 8:1 → pick 9 articles
-    MIN_ARTICLES = 15     # Minimum articles before sampling
+    SAMPLE_SIZE = 25      # Sample 20-30 articles (target ~25)
+    MIN_ARTICLES = 30     # Minimum articles before sampling
     MAX_ARTICLES = 120    # Cap the buffer at this size
 
     logger.info("═" * 60)
@@ -693,6 +699,153 @@ async def get_live_status():
         "last_fetch": live_last_fetch_time.isoformat() if live_last_fetch_time else None,
         "collection_start": live_collection_start.isoformat() if live_collection_start else None,
     }
+
+
+# ── Contribute Scan ──────────────────────────────────────────────
+
+async def contribute_scan_task_fn():
+    """
+    1-minute scan: collect news → sample 25 → analyse → return average score.
+    This is independent from the Live automation loop.
+    """
+    global contribute_scan_active, contribute_scan_result, contribute_scan_progress
+
+    SCAN_DURATION = 60   # seconds
+    FETCH_FREQ = 15      # fetch every 15s
+    SAMPLE_SIZE = 25
+    query = "crypto OR bitcoin OR ethereum"
+    buffer: list[dict] = []
+    seen: set[str] = set()
+    start = datetime.utcnow()
+    last_fetch = datetime.utcnow() - timedelta(seconds=FETCH_FREQ)  # trigger immediate first fetch
+
+    contribute_scan_progress = {"phase": "collecting", "articles": 0, "elapsed": 0, "message": "Starting scan..."}
+
+    try:
+        while contribute_scan_active:
+            now = datetime.utcnow()
+            elapsed = (now - start).total_seconds()
+            remaining = max(0, SCAN_DURATION - elapsed)
+            contribute_scan_progress["elapsed"] = round(elapsed)
+
+            # Fetch
+            if (now - last_fetch).total_seconds() >= FETCH_FREQ:
+                try:
+                    articles = fetch_crypto_news(query=query, limit=100)
+                    new_count = 0
+                    for art in articles:
+                        key = (art.get("title") or "").strip()[:80]
+                        if key and key not in seen:
+                            seen.add(key)
+                            text = f"{(art.get('title') or '').strip()}. {(art.get('description') or '').strip()}"
+                            if len(text.strip()) > 5:
+                                buffer.append({"text": text, "title": art.get("title", "")})
+                                new_count += 1
+                    logger.info(f"[Contribute] Fetched {len(articles)} articles, +{new_count} new (buffer: {len(buffer)})")
+                except Exception as e:
+                    logger.error(f"[Contribute] Fetch error: {e}")
+                last_fetch = now
+
+            contribute_scan_progress["articles"] = len(buffer)
+            contribute_scan_progress["message"] = f"Collecting... {int(remaining)}s left ({len(buffer)} articles)"
+
+            # Time's up?
+            if elapsed >= SCAN_DURATION:
+                break
+
+            await asyncio.sleep(2)
+
+        # ── Phase 2: Sample & Analyse ──
+        contribute_scan_progress["phase"] = "analyzing"
+        contribute_scan_progress["message"] = f"Sampling {SAMPLE_SIZE} of {len(buffer)} articles..."
+
+        if len(buffer) < 5:
+            contribute_scan_result = {"error": "Not enough articles collected", "score": None}
+            contribute_scan_progress["phase"] = "error"
+            contribute_scan_progress["message"] = "Not enough articles"
+            return
+
+        pick_count = min(SAMPLE_SIZE, len(buffer))
+        sampled = random.sample(buffer, pick_count)
+        texts = [s["text"] for s in sampled]
+
+        contribute_scan_progress["message"] = f"Analyzing {pick_count} articles with FinBERT..."
+
+        results = analyze_batch(texts)
+        scores = [r["score"] for r in results]
+        avg_score = round(sum(scores) / len(scores), 2)
+        classification = "Bullish" if avg_score >= 60 else "Bearish" if avg_score <= 40 else "Neutral"
+
+        contribute_scan_result = {
+            "score": avg_score,
+            "classification": classification,
+            "sample_size": pick_count,
+            "total_collected": len(buffer),
+            "timestamp": datetime.utcnow().isoformat(),
+            "engine": get_mode(),
+        }
+        contribute_scan_progress["phase"] = "done"
+        contribute_scan_progress["message"] = f"Score: {avg_score} ({classification})"
+        logger.info(f"[Contribute] ★ Score: {avg_score} ({classification}) [{pick_count} sampled / {len(buffer)} total]")
+
+    except asyncio.CancelledError:
+        logger.info("[Contribute] Scan cancelled")
+        contribute_scan_progress["phase"] = "cancelled"
+        contribute_scan_progress["message"] = "Scan cancelled"
+    except Exception as e:
+        import traceback
+        logger.error(f"[Contribute] Error: {e}")
+        logger.error(traceback.format_exc())
+        contribute_scan_result = {"error": str(e), "score": None}
+        contribute_scan_progress["phase"] = "error"
+        contribute_scan_progress["message"] = f"Error: {e}"
+    finally:
+        contribute_scan_active = False
+        contribute_scan_task = None
+
+
+@app.post("/api/contribute/start")
+async def start_contribute_scan():
+    """Start a 1-minute contribute scan."""
+    global contribute_scan_active, contribute_scan_task, contribute_scan_result
+
+    if not news_configured():
+        return JSONResponse({"error": "News API key not configured."}, status_code=400)
+
+    if contribute_scan_active:
+        return JSONResponse({"error": "Contribute scan already running."}, status_code=400)
+
+    contribute_scan_active = True
+    contribute_scan_result = None
+    contribute_scan_task = asyncio.create_task(contribute_scan_task_fn())
+
+    return {"message": "Contribute scan started (1 minute)", "active": True}
+
+
+@app.get("/api/contribute/status")
+async def get_contribute_status():
+    """Poll contribute scan progress."""
+    return {
+        "active": contribute_scan_active,
+        "phase": contribute_scan_progress.get("phase", "idle"),
+        "articles": contribute_scan_progress.get("articles", 0),
+        "elapsed": contribute_scan_progress.get("elapsed", 0),
+        "message": contribute_scan_progress.get("message", ""),
+        "result": contribute_scan_result,
+    }
+
+
+@app.post("/api/contribute/cancel")
+async def cancel_contribute_scan():
+    """Cancel an in-progress contribute scan."""
+    global contribute_scan_active, contribute_scan_task
+    if not contribute_scan_active:
+        return {"message": "No scan running"}
+    contribute_scan_active = False
+    if contribute_scan_task:
+        contribute_scan_task.cancel()
+        contribute_scan_task = None
+    return {"message": "Scan cancelled"}
 
 
 if __name__ == "__main__":
