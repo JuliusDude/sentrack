@@ -233,6 +233,7 @@ async def get_score(mode: str = Query("test")):
             status_code=404,
         )
 
+
     latest = history[-1]
     return {
         "score": latest["score"],
@@ -243,7 +244,10 @@ async def get_score(mode: str = Query("test")):
         "source": latest.get("source", "unknown"),
         "nlp_engine": get_mode(),
         "mode": mode,
+        "highest_tweet": latest.get("highest_tweet"),
+        "lowest_tweet": latest.get("lowest_tweet"),
     }
+
 
 
 @app.get("/api/history")

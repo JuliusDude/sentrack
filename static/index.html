@@ -834,6 +834,34 @@
             <div class="chart-container">
               <canvas id="trendChart"></canvas>
             </div>
+            </div>
+          </div>
+
+          <!-- Highest and Lowest Sentiment Tweets -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <!-- Highest Sentiment Tweet -->
+            <div class="card" style="border-left: 3px solid #22c55e;">
+              <div class="card-title" style="color: #22c55e; display: flex; align-items: center; gap: 8px;">
+                <span>🔥</span> Most Bullish Tweet
+              </div>
+              <div id="highestTweet" style="margin-top: 12px;">
+                <p style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">
+                  Run an analysis to see the highest sentiment tweet
+                </p>
+              </div>
+            </div>
+
+            <!-- Lowest Sentiment Tweet -->
+            <div class="card" style="border-left: 3px solid #ef4444;">
+              <div class="card-title" style="color: #ef4444; display: flex; align-items: center; gap: 8px;">
+                <span>❄️</span> Most Bearish Tweet
+              </div>
+              <div id="lowestTweet" style="margin-top: 12px;">
+                <p style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">
+                  Run an analysis to see the lowest sentiment tweet
+                </p>
+              </div>
+            </div>
           </div>
 
           <div class="card">
@@ -1065,7 +1093,63 @@
             : data.classification === "Bearish"
               ? "Negative market sentiment"
               : "Sideways market sentiment";
+        
+        // Update tweet displays if available
+        if (data.highest_tweet || data.lowest_tweet) {
+          updateTweetDisplays(data.highest_tweet, data.lowest_tweet);
+        }
+      }
 
+      function updateTweetDisplays(highest, lowest) {
+        const highestDiv = document.getElementById("highestTweet");
+        const lowestDiv = document.getElementById("lowestTweet");
+
+        if (highest) {
+          const labelColor = highest.label === 'positive' ? '#22c55e' : highest.label === 'negative' ? '#ef4444' : '#f59e0b';
+          highestDiv.innerHTML = `
+            <div style="background: rgba(34, 197, 94, 0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.2);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="background: ${labelColor}; color: #0f172a; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">
+                  ${highest.label}
+                </span>
+                <span style="color: #22c55e; font-weight: 700; font-size: 1.1rem;">
+                  ${highest.score.toFixed(1)}
+                </span>
+              </div>
+              <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5; margin: 0; font-style: italic;">
+                "${highest.text.length > 200 ? highest.text.substring(0, 200) + '...' : highest.text}"
+              </p>
+              <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">
+                Confidence: ${(highest.confidence * 100).toFixed(0)}%
+              </div>
+            </div>
+          `;
+        }
+
+        if (lowest) {
+          const labelColor = lowest.label === 'positive' ? '#22c55e' : lowest.label === 'negative' ? '#ef4444' : '#f59e0b';
+          lowestDiv.innerHTML = `
+            <div style="background: rgba(239, 68, 68, 0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="background: ${labelColor}; color: #0f172a; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">
+                  ${lowest.label}
+                </span>
+                <span style="color: #ef4444; font-weight: 700; font-size: 1.1rem;">
+                  ${lowest.score.toFixed(1)}
+                </span>
+              </div>
+              <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5; margin: 0; font-style: italic;">
+                "${lowest.text.length > 200 ? lowest.text.substring(0, 200) + '...' : lowest.text}"
+              </p>
+              <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">
+                Confidence: ${(lowest.confidence * 100).toFixed(0)}%
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      function updateStats(data) {
         // Stats
         document.getElementById("rawScore").textContent = data.raw_score;
         document.getElementById("sampleSize").textContent =
@@ -1199,12 +1283,14 @@
                         fillStyle: "rgba(34, 197, 94, 0.3)",
                         strokeStyle: "#22c55e",
                         lineWidth: 2,
+                        fontColor: "#94a3b8", // White text
                       },
                       {
                         text: "🔴 Negative Delta (Score Decreased)",
                         fillStyle: "rgba(239, 68, 68, 0.3)",
                         strokeStyle: "#ef4444",
                         lineWidth: 2,
+                        fontColor: "#94a3b8", // White text
                       },
                     ];
                   },
@@ -1455,6 +1541,7 @@
             document.getElementById("app").style.display = "none";
             document.getElementById("dashboard").style.display = "block";
             updateScoreDisplay(scoreData);
+            updateStats(scoreData);
             updateChart(historyData.history);
             updateActivityFeed(historyData.history);
           } else {
